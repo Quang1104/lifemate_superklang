@@ -1,0 +1,20 @@
+# Competition datasets
+/train/
+/public_test/
+/private_test/
+
+# ML weights and checkpoints
+/models/
+/checkpoints/
+/outputs/
+*.safetensors
+*.gguf
+*.pt
+*.pth
+
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+.env
+.env.*
