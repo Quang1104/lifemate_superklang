@@ -1,0 +1,9 @@
+# First iteration — three experiments maximum
+
+1. **Schema retrieval diagnostic (run without model):** all installed versus lexical top8/top16 with optional x-ref producer closure. Hypothesis: smaller prompts retain needed tools. Report held-out gold-tool recall and schema-character budget; accept pruning only if near-perfect recall and all-step dependencies preserved. A recall diagnostic is not task accuracy.
+2. **Oracle planner baseline:** frozen Qwen3-4B/non-thinking/greedy, same40 smoke then309 validation IDs. Compare all schemas against the single retrieval policy accepted in experiment1. Record state-gated local score, hashes, call F1, invalid/donefalse, no-action/clarification and mean/P95 end-to-end time. No weights available yet; no measured acceptance claim. Keep simple if retrieval reduces score or adds latency.
+3. **Paired ASR:** exact experiment2 planner/config/IDs, change only gold transcript (TRAIN analysis) to Whisper-small predicted speech for current and user-history turns. Measure WER/CER, entity errors, per-item score delta and time. If planner is already weak on oracle, fix dominant planner failures first. No redundant ASR pass or fine-tuning without evidence.
+
+Do not start SFT until first valid ASR+planner baseline exists. If needed, train only1236 manifest training IDs; never use309 validation IDs as examples/labels for training. Group-aware manifest handles exact duplicate normalized transcripts/audio paths, not semantic/paraphrase duplicates. A separate lockbox or leave-app-out split can be created before broader prompt/model selection; record any repeated validation tuning.
+
+Next after real baseline: rank error classes, choose at most three controlled improvements, retain last-known-good config/checkpoint, record actual costs and reject regressions. Deadlines: solution freeze by2026-11-16 23:59 Asia/Saigon; leave time for actual offline Docker run and packaging.

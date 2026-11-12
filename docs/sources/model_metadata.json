@@ -1,0 +1,42 @@
+{
+  "Qwen/Qwen3-4B": {
+    "id": "Qwen/Qwen3-4B",
+    "sha": "1cfa9a7208912126459214e8b04321603b3df60c",
+    "createdAt": "2025-04-27T03:41:29.000Z",
+    "lastModified": "2025-07-26T03:46:39.000Z",
+    "safetensors": {
+      "parameters": {
+        "BF16": 4022468096
+      },
+      "total": 4022468096
+    },
+    "license": "apache-2.0"
+  },
+  "Qwen/Qwen3.5-4B": {
+    "id": "Qwen/Qwen3.5-4B",
+    "sha": "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a",
+    "createdAt": "2026-02-27T14:45:03.000Z",
+    "lastModified": "2026-03-02T00:52:52.000Z",
+    "safetensors": {
+      "parameters": {
+        "BF16": 4659861248,
+        "F32": 3840
+      },
+      "total": 4659865088
+    },
+    "license": "apache-2.0"
+  },
+  "openai/whisper-small": {
+    "id": "openai/whisper-small",
+    "sha": "973afd24965f72e36ca33b3055d56a652f456b4d",
+    "createdAt": "2022-09-26T06:51:27.000Z",
+    "lastModified": "2024-02-29T10:57:38.000Z",
+    "safetensors": {
+      "parameters": {
+        "F32": 241734912
+      },
+      "total": 241734912
+    },
+    "license": "apache-2.0"
+  }
+}

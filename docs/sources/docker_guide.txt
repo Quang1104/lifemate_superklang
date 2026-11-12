@@ -1,0 +1,383 @@
+PAGE 1
+🐳
+[2026] H ư ớ ng d ẫ n dùng docker
+đ ể  n ộ p bài cho Zalo AI Challenge
+2026 - LifeMate - Agentic AI
+That Turns Your Voice Into
+Action
+1. Gi ớ i thi ệ u
+Tài li ệ u này h ư ớ ng d ẫ n các đ ộ i thi Zalo AI Challenge 2026 đ óng gói và n ộ p gi ả i
+pháp d ư ớ i d ạ ng Docker Image, bao g ồ m đ ầ y đ ủ  mã ngu ồ n inference, mô hình, mã
+ngu ồ n và d ữ  li ệ u hu ấ n luy ệ n (Training Code & Data), cùng các tài li ệ u ph ụ c v ụ
+ki ể m ch ứ ng k ế t qu ả .
+Docker Image ph ả i đư ợ c hoàn thi ệ n và n ộ p tr ư ớ c khi công b ố  b ộ  private test. Quá
+trình inference ph ả i ho ạ t đ ộ ng hoàn toàn offline đ ể  BTC có th ể  ch ạ y l ạ i, ki ể m
+ch ứ ng và xác đ ị nh k ế t qu ả  cu ố i cùng.
+1. Gi ớ i thi ệ u
+2. Cài đ ặ t Docker trên Ubuntu
+3. Cài đ ặ t Nvidia Docker / Driver
+4. N ộ p bài cho Zalo AI Challange
+5. C ấ u trúc th ư  m ụ c code
+6. B ổ  sung b ắ t bu ộ c v ề  Training Code & Tài li ệ u mô t ả
+7. Ph ụ  l ụ c: C ấ u trúc vi ế t Jupyter notebook đ ể  đ o l ư ờ ng th ờ i gian
+8. Upload docker
+[2026] H ướ ng d ẫ n dùng docker đ ể  n ộ p bài cho Zalo AI Challenge 2026 - LifeMate - Agentic AI That Turns Your Voice Into Action
+1
+
+PAGE 2
+Dockerlà m ộ t n ề n t ả ng giúp ng ư ờ i dùng đ óng gói và ch ạ y ch ươ ng trình c ủ a mình
+trên các môi tr ư ờ ng khác nhau m ộ t cách nhanh nh ấ t d ự a trên các container.
+Docker Imagelà m ộ t d ạ ng t ậ p h ợ p các t ệ p c ủ a ứ ng d ụ ng, đư ợ c t ạ o ra b ở i Docker
+engine. N ộ i dung c ủ a các Docker image s ẽ  không b ị  thay đ ổ i khi di chuy ể n. 
+Docker image đư ợ c dùng đ ể  ch ạ y các Docker container.
+Docker Containerlà m ộ t d ạ ng runtime c ủ a các Docker image, dùng đ ể  làm môi
+tr ư ờ ng ch ạ y ứ ng d ụ ng.
+H ư ớ ng d ẫ n chi ti ế t các b ạ n có th ể  tham kh ả o t ạ i: https://docs.docker.com/get-
+started/
+2. Cài đ ặ t Docker trên Ubuntu
+Đ ố i v ớ i các h ệ  đ i ề u hành khác, tham kh ả o cách cài đ ặ t t ạ i đ ây 
+https://docs.docker.com/install/overview/
+1. Cài đ ặ t docker
+sudo apt-get install docker.io
+2. Ki ể m tra phiên b ả n docker
+sudo docker --version
+⚠Docker version 24.0.5, build ced0996
+3. Ch ạ y th ử  docker hello world
+sudo docker run hello-world
+[2026] H ướ ng d ẫ n dùng docker đ ể  n ộ p bài cho Zalo AI Challenge 2026 - LifeMate - Agentic AI That Turns Your Voice Into Action
+2
+
+PAGE 3
+4. M ộ t s ố  câu l ệ nh ph ổ  bi ế n
+Li ệ t kê các images hi ệ n có
+sudo docker images
+Li ệ t kê các container hi ệ n có
+sudo docker ps -a
+3. Cài đ ặ t Nvidia Docker / Driver
+Đ ể  s ử  d ụ ng đươ c GPU trên docker, b ạ n c ầ n cài đ ặ t Nvidia docker.
+H ư ớ ng d ẫ n cài đ ặ t Nvidia docker t ạ i đ ây: https://github.com/NVIDIA/nvidia-docker
+L ư u ý: Đ ể  tránh l ỗ i khi ch ấ m, các đ ộ i c ầ n cài đ ặ t các th ư  vi ệ n đ ồ ng b ộ  môi tr ư ờ ng
+v ớ i server BTC:
+[2026] H ướ ng d ẫ n dùng docker đ ể  n ộ p bài cho Zalo AI Challenge 2026 - LifeMate - Agentic AI That Turns Your Voice Into Action
+3
+
+PAGE 4
+GPU: 1 × NVIDIA GeForce RTX 5090 (32 GB), CPU 16 nhân Intel(R) Xeon(R)
+Gold 6459C, RAM 64 GB
+Driver Version: 595.58.03
+CUDA Version: 13.2.0
+Base image ph ả i dùng CUDA không cao h ơ n 13.2 (driver c ủ a BTC ch ạ y đư ợ c các
+image CUDA 12.x và 13.x ≤  13.2). Ví d ụ  nvidia docker image: nvidia/cuda:13.2.0-
+devel-ubuntu22.04.
+4. N ộ p bài cho Zalo AI Challange
+Các b ư ớ c c ầ n thi ế t đ ể  t ạ o đư ợ c m ộ t Docker Image 
+1. T ạ o m ộ t docker container m ớ i (ho ặ c s ử  d ụ ng docker có s ẵ n).
+2. Đư a model và source code đ ang có vào docker.
+3. Install các packages và libraries c ầ n thi ế t mà solution c ủ a b ạ n s ử  d ụ ng đ ể
+ch ạ y.
+4. Vi ế t m ộ t file script tên predict.sh. File này ch ứ a command các b ư ớ c đ ể  ch ạ y
+test. Nh ậ n input t ừ  /data và output ra /result/submission.jsonl (tu ỳ  theo
+format quy đ ị nh c ủ a đ ề  bài). Ngoài ra, xu ấ t ra các thông s ố  th ờ i gian load
+model, th ờ i gian predict ở  stdout.
+5. N ộ p file predict predict_notebook.ipynb đ ể  đ o th ờ i gian inference (xem ph ụ
+l ụ c)
+6. Commit các thay đ ổ i trong docker container
+7. Save docker container thành 1 file image kèm checksum và n ộ p lên website
+cu ộ c thi.
+[2026] H ướ ng d ẫ n dùng docker đ ể  n ộ p bài cho Zalo AI Challenge 2026 - LifeMate - Agentic AI That Turns Your Voice Into Action
+4
+
+PAGE 5
+5. C ấ u trúc th ư  m ụ c code
+Ví d ụ  source code c ủ a b ạ n ở  folder /mnt/zac2026/ v ớ ic ấ u trúc nh ư  sau.
+📂|---- predict.py
+|---- preprocessing.py
+|---- saved_models
+| |---- models.safetensors # model c ầ n đ c copy vào trong docker
+|---- requirements.txt
+|---- predict.sh
+|---- start_jupyter.sh
+|---- predict_notebook.ipynb # s ử  d ụ ng đ ể  đ ánh giá th ờ i gian, xem
+h ư ớ ng d ẫ n vi ế t notebook ở  cu ố i
+|---- training_code # ch ứ a toàn b ộ  mã ngu ồ n training và README.
+| |---- README.md
+[2026] H ướ ng d ẫ n dùng docker đ ể  n ộ p bài cho Zalo AI Challenge 2026 - LifeMate - Agentic AI That Turns Your Voice Into Action
+5
+
+PAGE 6
+D ữ  li ệ u input (/data ). BTC mount th ư  m ụ c ch ứ a split private test vào /data, cùng
+c ấ u trúc v ớ i gói public test
+📂/data/
+└─  private_test/
+|---- private_test.jsonl                        # input t ừ ng m ẫ u: id, audio,
+context, history
+|---- private_test_tools_catalog.json           # schema các tool
+|---- private_test_environment/<id>/state.json  # KHÔNG đư ợ c đ ọ c
+tr ự c ti ế p, ch ỉ  qua zaic_tools
+|---- audio/<id>/<id>.wav                       # yêu c ầ u cu ố i;
+<id>_u1.wav, <id>_u2.wav...: các l ư ợ t user trong history
+|---- zaic_tools/                               # th ư  vi ệ n ch ạ y tool c ủ a private
+test
+Sample predict.py t ố i thi ể u:
+import json, sys, time
+from pathlib import Path
+ROOT = Path("/data")                               # thư mục 
+chứa split
+SPLIT = "private_test"
+sys.path.insert(0, str(ROOT / SPLIT))              # zaic_too
+ls của split, KHÔNG dùng bản đóng trong image
+from zaic_tools import ToolEnv
+def infer(item):
+t1 = time.perf_counter()                       # bắt 
+đầu mẫu: trước khi đọc audio
+    env = ToolEnv(SPLIT, item["id"], root=ROOT)    # đúng một 
+ToolEnv cho mỗi mẫu
+    # ASR (ROOT / SPLIT / item["audio"]) -> LLM -> env.call(t
+ool, arguments) -> LLM -> ...
+    return env.get_tool_calls(), env.get_state_hash(), int((t
+[2026] H ướ ng d ẫ n dùng docker đ ể  n ộ p bài cho Zalo AI Challenge 2026 - LifeMate - Agentic AI That Turns Your Voice Into Action
+6
+
+PAGE 7
+ime.perf_counter() - t1) * 1000)
+Path("/result").mkdir(parents=True, exist_ok=True)
+with open(ROOT / SPLIT / f"{SPLIT}.jsonl", encoding="utf-8") 
+as fin, \
+     open("/result/submission.jsonl", "w", encoding="utf-8") 
+as fout:
+    for line in fin:
+        item = json.loads(line)
+        tool_calls, state_hash, ms = infer(item)
+        fout.write(json.dumps({"id": item["id"], "tool_call
+s": tool_calls, "state_hash": state_hash, "time": ms},
+                              ensure_ascii=False) + "\n")
+1. Kh ở i đ ộ ng docker container và đ ặ t tên container v ớ i name zac2026
+docker run --gpus '"device=0"' --network host -it --name zac2026
+nvidia/cuda:13.2.0-devel-ubuntu22.04 /bin/bash
+B ạ n b ắ t bu ộ c ph ả i s ử  d ụ ng base image ph ả i có CUDA 13.2 đ ể  t ươ ng tích
+v ớ i server ch ấ m đ i ể m c ủ a ban t ổ  ch ứ c.
+C ờ  --network host ch ỉ  dùng lúc d ự ng image (cài package, ch ạ y jupyter đ o
+th ờ i gian ở  b ư ớ c sau). Khi ch ấ m, container không có m ạ ng.
+Lúc này trong container đ ang ở  v ị  trí /
+[2026] H ướ ng d ẫ n dùng docker đ ể  n ộ p bài cho Zalo AI Challenge 2026 - LifeMate - Agentic AI That Turns Your Voice Into Action
+7
+
+PAGE 8
+2. Ki ể m tra container có s ử  d ụ ng đư ợ c GPU hay không b ằ ng l ệ nh nvidia-smi
+nvidia-smi
+3. M ở  m ộ t terminal m ớ i, copy source code ở  folder hi ệ n t ạ i vào trong container
+v ớ i cú pháp.
+sudo docker cp [source_path] [container_name]:[destination_path]
+sudo docker cp /mnt/zac2026/ zac2026:/code/
+Lúc này Lúc này toàn b ộ  source code ở  ngoài đ ã đư ợ c copy vào trong
+container ở  v ị  trí /code trong container. M ọ i model (ASR, LLM, tokenizer…)
+ph ả i n ằ m s ẵ n trong image, không t ả i t ừ  HuggingFace lúc ch ạ y.
+4. Cài python và các package c ầ n thi ế t
+apt update; apt-get -y install libgl1-mesa-glx libglib2.0-0 vim ffmpeg; apt -y
+install python3-pip
+Nh ậ p câu tr ả  l ờ i c ầ n thi ế t n ế u đư ợ c h ỏ i
+[2026] H ướ ng d ẫ n dùng docker đ ể  n ộ p bài cho Zalo AI Challenge 2026 - LifeMate - Agentic AI That Turns Your Voice Into Action
+8
+
+PAGE 9
+5. Cài đ ặ t các th ư  vi ệ n c ầ n thi ế t t ừ  file requirements.txt ho ặ c t ự  install trong
+container
+Tr ư ớ c h ế t chuy ể n t ớ i th ư  m ụ c code b ằ ng l ệ nh 
+cd /code
+pip install jupyterlab
+pip install -r requirements.txt
+L ư u ý môi tr ư ờ ng b ắ t bu ộ c ph ả i cài đ ặ t jupyterlab đ ể  ch ấ m th ờ i gian inference
+[2026] H ướ ng d ẫ n dùng docker đ ể  n ộ p bài cho Zalo AI Challenge 2026 - LifeMate - Agentic AI That Turns Your Voice Into Action
+9
+
+PAGE 10
+6. Ch ỉ nh s ử a file /code/predict.sh
+Ví d ụ  có 2 b ư ớ c đ ể  ch ạ y b ộ  test ra k ế t qu ả .
+python3 /code/preprocessing.py
+python3 /code/predict.py
+File predict.py ph ả i ghi k ế t qu ả  ở  /result/submission.jsonl (trong container,
+code ph ả i t ự  t ạ o folder /result n ế u folder ch ư a t ồ n t ạ i)
+bash /code/predict.sh
+[2026] H ướ ng d ẫ n dùng docker đ ể  n ộ p bài cho Zalo AI Challenge 2026 - LifeMate - Agentic AI That Turns Your Voice Into Action
+10
+
+PAGE 11
+7. Ch ỉ nh s ử a file /code/start_jupyter.sh
+jupyter lab --port 9777 --ip 0.0.0.0 --NotebookApp.passwor
+d='zac2026' --NotebookApp.token='zac2026'  --allow-root --
+no-browser
+8. Ch ỉ nh s ử a file predict_notebook.ipynb: Xem ph ụ  l ụ c ở  cu ố i 
+9. Sau khi hoàn thành predict ti ế n hành l ư u l ạ i các thay đ ổ i trên container. (thao
+tác ở  terminal)
+sudo docker commit [CONTAINER ID] [image name]:[tag name]
+sudo docker commit zac2026 zac2026-teamname:v1
+10. Ki ể m tra docker l ầ n cu ố i
+10.1 Ki ể m tra hàm predict đ ể  xu ấ t submission.jsonl
+Ch ạ y predict.sh  (các tham s ố  v ề  hyperparameters ph ả i ph ả i đư ợ c set default
+trong file predict.py, BTC không ch ị u trách nhi ệ m n ế u các b ạ n mu ố n thay đ ổ i
+tham s ố  này sau khi n ộ p bài)
+sudo docker run –v [path to test data]:/data –v [current dir]:/result [docker
+name]
+sudo docker run --gpus '"device=0"'  -v /mnt/zac2026/data:/data:ro -v
+/mnt/zac2026/result:/result zac2026-btc-test-docker:v1 /bin/bash
+/code/predict.sh
+[2026] H ướ ng d ẫ n dùng docker đ ể  n ộ p bài cho Zalo AI Challenge 2026 - LifeMate - Agentic AI That Turns Your Voice Into Action
+11
+
+PAGE 12
+K ế t qu ả  c ủ a file submission.jsonl s ẽ  đư ợ c tr ả  v ề  ở  th ư  m ụ c 
+/mnt/zac2026/result
+10.2Ki ể m tra jupyter có ch ạ y đư ợ c không.
+Ch ạ y start_jupyter.sh
+sudo docker run -it --gpus '"device=0"' -p 9777:9777 -v
+/mnt/zac2026/_data:/data:ro -v /mnt/zac2026/result:/result zac2026-
+teamname:v1 /bin/bash /code/start_jupyter.sh
+Truy c ậ p local host ở  port 9777
+Nh ậ p m ậ t kh ẩ u zac2026
+[2026] H ướ ng d ẫ n dùng docker đ ể  n ộ p bài cho Zalo AI Challenge 2026 - LifeMate - Agentic AI That Turns Your Voice Into Action
+12
+
+PAGE 13
+Giao di ệ n cu ố i cùng sau khi cài đ ặ t môi tr ư ờ ng thành công
+Trong folder code ph ả i có file predict_notebook.ipynb v ớ i n ộ i dung nh ư
+ph ầ n ph ụ  l ụ c
+[2026] H ướ ng d ẫ n dùng docker đ ể  n ộ p bài cho Zalo AI Challenge 2026 - LifeMate - Agentic AI That Turns Your Voice Into Action
+13
+
+PAGE 14
+11. Xu ấ t image ra và n ộ p bài. 
+sudo docker save zac2026-teamname:v1 | gzip >
+zac2026_TeamName.tar.gz
+File zac2026_TeamName.tar.gz là file b ạ n c ầ n n ộ p. Ki ể m tra l ạ i trên máy
+khác: docker load -i zac2026_TeamName.tar.gz r ồ i ch ạ y l ạ i b ư ớ c 10.1.
+6. B ổ  sung b ắ t bu ộ c v ề  Training Code & Tài li ệ u mô t ả
+1. README.md mô t ả  ý t ư ở ng
+Các đ ộ i đ i ề n thêm README.md trình bày ng ắ n g ọ n ý t ư ở ng c ủ a solution, g ồ m
+training và inference: model ASR, model LLM (tên, s ố  tham s ố , context length),
+cách g ọ i tool / vòng l ặ p agent, d ữ  li ệ u và cách sinh d ữ  li ệ u t ổ ng h ợ p (n ế u có).
+[2026] H ướ ng d ẫ n dùng docker đ ể  n ộ p bài cho Zalo AI Challenge 2026 - LifeMate - Agentic AI That Turns Your Voice Into Action
+14
+
+PAGE 15
+2. Cung c ấ p đ ầ y đ ủ  Training Code & Data
+BTC s ẽ  s ử  d ụ ng code và data trong th ư  m ụ c training_code/ đ ể  reproduce l ạ i quá
+trình training nh ằ m ki ể m tra tính nh ấ t quán c ủ a k ế t qu ả .
+Vì BTC s ẽ  ch ạ y reproduce có internet, các đ ộ i có th ể :
+Upload training_data và models lên HuggingFace ho ặ c d ị ch v ụ  t ươ ng t ự
+Trong training_code, c ầ n ghi rõ URL t ả i xu ố ng.
+L ư u ý: d ữ  li ệ u và mô hình trên các n ề n t ả ng không đư ợ c thay đ ổ i sau deadline n ộ p
+docker. Base model dùng trong quá trình training không đư ợ c đư a vào bên trong
+Docker đ ể  tránh làm Docker quá n ặ ng. (ch ỉ  đư a model đ ã fine-tune / weights dùng
+lúc inference).
+3. C ố  đ ị nh seed
+Đ ể  b ả o đ ả m reproducibility, các đ ộ i ph ả i:
+Set seed c ố  đ ị nh trong training và inference.
+Đ ả m b ả o mô hình reproduce l ạ i t ừ  code/data cho ra k ế t qu ả  gi ố ng mô hình
+dùng trong inference.
+7. Ph ụ  l ụ c: C ấ u trúc vi ế t Jupyter notebook đ ể  đ o l ư ờ ng
+th ờ i gian
+Bên c ạ nh các tài li ệ u h ư ớ ng d ẫ n th ự c thi các mã ngu ồ n hu ấ n luy ệ n và d ự  đ oán.
+M ỗ i team c ầ n chu ẩ n b ị  m ộ t Jupyter notebook đ ể  thu ậ n ti ệ n cho vi ệ c đ ánh giá th ờ i
+gian. BTC s ẽ  dùng notebook này đ ể  đ o l ư ờ ng th ờ i gian ch ạ y c ủ a m ỗ i test case.
+N ộ i dung c ủ a file notebook này s ẽ  t ươ ng t ự  nh ư  file predict.py, BTC s ẽ  tính đ i ể m
+th ờ i gian t ừ  b ư ớ c load file cho t ớ i b ư ớ c inference ra k ế t qu ả  cho m ỗ i testcase.
+Notebook này s ẽ  th ể  hi ệ n các b ư ớ c c ủ a vi ệ c d ự  đ oán đư ợ c th ự c hi ệ n tách r ờ i nhau
+nh ư : (1) Set Seed; (2) N ạ p mô hình và tài nguyên; (3) đ ọ c d ữ  li ệ u test cases (t ừ ng
+test case 1) (4) th ự c hi ệ n d ự  đ oán. Do v ậ y notebook này ph ả i g ồ m ít nh ấ t 3 ô (cell)
+t ươ ng ứ ng v ớ i 3 b ư ớ c chính:
+B ư ớ c 1: set seed c ố  đ ị nh ( đ ộ i thi t ự  ch ọ n seed, đ i ề n seed vào trong
+notebook) và BTC ch ỉ  th ự c hi ệ n run l ấ y k ế t qu ả
+[2026] H ướ ng d ẫ n dùng docker đ ể  n ộ p bài cho Zalo AI Challenge 2026 - LifeMate - Agentic AI That Turns Your Voice Into Action
+15
+
+PAGE 16
+import os
+import torch
+import random
+import numpy as np
+def seed_everything(seed=42):
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+seed_everything(42) # Ví dụ cho seed bằng 42
+B ư ớ c 2: N ạ p mô hình và các tài nguyên c ầ n thi ế t
+# không dùng API ngoài, vì inference sẽ không có internet
+asr_model = ...
+model = ...
+B ư ớ c 3: Đ ọ c n ộ i dung các test case t ừ  th ư  m ụ c đ ầ u vào
+import json, sys
+from pathlib import Path
+ROOT = Path("/data")
+SPLIT = next(p.name for p in ROOT.iterdir() if (p / f"{p.nam
+e}_tools_catalog.json").exists())
+sys.path.insert(0, str(ROOT / SPLIT))   # zaic_tools của spli
+t
+from zaic_tools import ToolEnv
+[2026] H ướ ng d ẫ n dùng docker đ ể  n ộ p bài cho Zalo AI Challenge 2026 - LifeMate - Agentic AI That Turns Your Voice Into Action
+16
+
+PAGE 17
+with open(ROOT / SPLIT / f"{SPLIT}.jsonl", encoding="utf-8") 
+as f:
+    test_cases = [json.loads(line) for line in f]
+B ư ớ c 4: Th ự c hi ệ n d ự  đ oán và in ra k ế t qu ả  c ũ ng nh ư  th ờ i gian. 
+import time
+all_result = []
+for item in test_cases:                            # lần lượt 
+từng mẫu
+    t1 = time.perf_counter()
+    env = ToolEnv(SPLIT, item["id"], root=ROOT)    # đúng một 
+ToolEnv cho mỗi mẫu
+    run_agent(item, env)                           # ASR -> L
+LM -> env.call(...) -> ...
+    tool_calls, state_hash = env.get_tool_calls(), env.get_st
+ate_hash()
+    ms = int((time.perf_counter() - t1) * 1000)
+    all_result.append({"id": item["id"], "tool_calls": tool_c
+alls, "state_hash": state_hash, "time": ms})
+Path("/result").mkdir(parents=True, exist_ok=True)
+with open("/result/jupyter_submission.jsonl", "w", encoding
+="utf-8") as f:
+    for r in all_result:
+        f.write(json.dumps(r, ensure_ascii=False) + "\n")
+(Mã ngu ồ n mang tính ch ấ t tham kh ả o)
+L ư u ý:BTC ch ỉ  m ở  file notebook và run all cells, nhi ệ m v ụ  c ủ a các b ạ n ph ả i đ ả m
+b ả o các cells khi ch ạ y không b ị  l ỗ i ở  b ư ớ c nào, và cu ố i cùng ph ả i xu ấ t ra đư ợ c
+files:
+/result/jupyter_submission.jsonl, cùng đ ị nh d ạ ng file submission.jsonl (có
+tr ư ờ ng time).
+[2026] H ướ ng d ẫ n dùng docker đ ể  n ộ p bài cho Zalo AI Challenge 2026 - LifeMate - Agentic AI That Turns Your Voice Into Action
+17
+
+PAGE 18
+Đ ể  tránh b ị  overwrite k ế t qu ả  khi ch ạ y b ư ớ c predict.py, đ ố i v ớ i các k ế t qu ả  đư ợ c
+xu ấ t ra khi ch ạ y jupyter, các b ạ n ph ả i thêm prefix là “jupyter_”
+Các đ ộ i ph ả i đ ả m b ả o khi BTC ch ấ m đ i ể m thì đ i ể m c ủ a file
+jupyter_submission.jsonl ph ả i gi ố ng v ớ i submission.jsonl thì BTC m ớ i dùng
+tr ư ờ ng time c ủ a file này đ ể  đ ánh giá th ờ i gian.
+8. Upload docker
+1.  L ấ y checksum MD5 c ủ a file docker zac2026_TeamName.tar.gz đ ã nén ở  m ụ c 
+5. C ấ u trúc th ư  m ụ c code
+md5sum zac2026_TeamName.tar.gz
+Tham kh ả o thêm cách check MD5 ở  Windows và MacOS: 
+https://portal.nutanix.com/page/documents/kbs/details?
+targetId=kA07V000000LWYqS
+Linux: https://www.geeksforgeeks.org/md5sum-linux-command/
+2. Upload docker lên google drive
+BTC s ẽ  download docker c ủ a các b ạ n v ề  máy ch ủ  đ ể  ti ế n hành b ư ớ c ki ể m tra
+k ế t qu ả  cu ố i cùng.
+Upload file docker đ ã nén lên d ị ch v ụ  storage c ủ a Google drive ch ỉ nh sang
+ch ế  đ ộ  share “Anyone with the link”
+[2026] H ướ ng d ẫ n dùng docker đ ể  n ộ p bài cho Zalo AI Challenge 2026 - LifeMate - Agentic AI That Turns Your Voice Into Action
+18
+
+PAGE 19
+3. N ộ p link google drive và checksum theo thông báo n ộ p bài c ủ a BTC
+Chúc các b ạ n thành công!
+[2026] H ướ ng d ẫ n dùng docker đ ể  n ộ p bài cho Zalo AI Challenge 2026 - LifeMate - Agentic AI That Turns Your Voice Into Action
+19
