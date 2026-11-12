@@ -1,0 +1,12 @@
+{
+  "drive_root": "/content/drive/MyDrive/lifemate",
+  "dataset_zip": "train+public_test.zip",
+  "data_dir": "/content/lifemate_data",
+  "models_dir": "/content/models",
+  "results_dir": "results",
+  "models": {
+    "planner": {"repo": "Qwen/Qwen3-4B", "revision": "1cfa9a7208912126459214e8b04321603b3df60c"},
+    "planner_alt": {"repo": "Qwen/Qwen3-4B-Instruct-2507", "revision": "main"},
+    "asr": {"repo": "openai/whisper-small", "revision": "973afd24965f72e36ca33b3055d56a652f456b4d"}
+  }
+}

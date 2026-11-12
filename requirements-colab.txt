@@ -1,0 +1,6 @@
+# Colab GPU runtime. torch is Colab's preinstalled build (recorded by notebook 01), not reinstalled here.
+transformers==4.56.2
+accelerate==1.10.1
+peft==0.17.1
+bitsandbytes==0.47.0
+jsonschema>=4.22,<5
