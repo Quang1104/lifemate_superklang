@@ -1,9 +1,9 @@
-# Competition datasets
+# Contest datasets
 /train/
 /public_test/
 /private_test/
 
-# ML weights and checkpoints
+# Model weights
 /models/
 /checkpoints/
 /outputs/
@@ -16,5 +16,13 @@
 .venv/
 __pycache__/
 .pytest_cache/
+*.pyc
+
+# Credentials
 .env
 .env.*
+!.env.example
+
+# OS
+.DS_Store
+__MACOSX/
