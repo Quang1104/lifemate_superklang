@@ -11,7 +11,7 @@ dependencies = ["jsonschema>=4.22,<5", "tzdata>=2024.1"]  # Docker base image sh
 
 [project.optional-dependencies]
 model = ["torch>=2.6,<3", "transformers==5.20.2", "numpy>=1.26,<3", "jinja2>=3.1,<4",
-         "xgrammar>=0.1.19,<0.2"]  # pin exactly once the Colab-installed version is recorded
+         "xgrammar==0.1.34"]  # verified on Colab T4, Python 3.13
 test = ["pytest>=8,<10"]
 
 [tool.setuptools.packages.find]
