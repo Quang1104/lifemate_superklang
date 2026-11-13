@@ -1,0 +1,2321 @@
+[
+  {
+    "root": "C:/Users/ADMIN/OneDrive - VNU-HCMUS/Documents/XuanQuang/datalife/train+public_test",
+    "status": "READY",
+    "splits": {
+      "train": {
+        "jsonl": {
+          "path": "C:/Users/ADMIN/OneDrive - VNU-HCMUS/Documents/XuanQuang/datalife/train+public_test/train/train.jsonl",
+          "present": true,
+          "metadata": {
+            "present": false
+          }
+        },
+        "catalog": {
+          "path": "C:/Users/ADMIN/OneDrive - VNU-HCMUS/Documents/XuanQuang/datalife/train+public_test/train/train_tools_catalog.json",
+          "present": true,
+          "metadata": {
+            "present": false
+          }
+        },
+        "statistics": {
+          "sample_count": 1545,
+          "unique_id_count": 1545,
+          "missing_id_count": 0,
+          "installed_app_sample_counts": {
+            "alarm": 493,
+            "appliances": 110,
+            "banking": 489,
+            "bike_rental": 98,
+            "bill_payment": 219,
+            "calculator": 112,
+            "calendar": 871,
+            "chat_ott": 691,
+            "contacts": 887,
+            "door_lock": 124,
+            "email": 368,
+            "ewallet": 549,
+            "exchange_rate": 91,
+            "fitness": 105,
+            "flights": 98,
+            "food_delivery": 457,
+            "fuel_price": 308,
+            "gold_price": 355,
+            "home_automation": 115,
+            "home_energy": 121,
+            "home_security": 133,
+            "household_chores": 119,
+            "learning": 117,
+            "library": 108,
+            "lottery": 69,
+            "loyalty": 104,
+            "maps": 308,
+            "medication": 345,
+            "music": 350,
+            "news": 141,
+            "notes": 557,
+            "package_tracking": 93,
+            "phone": 529,
+            "podcast_radio": 131,
+            "reminders": 871,
+            "ride_hailing": 507,
+            "robot_vacuum": 119,
+            "shopping_list": 99,
+            "smart_home": 659,
+            "sms": 426,
+            "subscriptions": 120,
+            "tasks": 543,
+            "tv": 346,
+            "video_meeting": 126,
+            "weather": 634
+          },
+          "samples_with_history": 1018,
+          "referenced_audio": {
+            "present": 1545,
+            "missing": 0,
+            "rejected_path": 0
+          },
+          "train_labels": {
+            "action_counts": {
+              "alarm.create": 78,
+              "alarm.delete": 3,
+              "alarm.list": 9,
+              "alarm.update": 6,
+              "appliances.list": 20,
+              "appliances.start_cycle": 19,
+              "appliances.stop": 8,
+              "banking.get_balance": 62,
+              "banking.list_beneficiaries": 57,
+              "banking.list_transactions": 4,
+              "banking.open_savings": 5,
+              "banking.transfer": 82,
+              "bike_rental.find_bikes": 15,
+              "bike_rental.reserve": 33,
+              "bill_payment.list_bills": 112,
+              "bill_payment.pay": 104,
+              "bill_payment.schedule_autopay": 9,
+              "calculator.calculate": 9,
+              "calculator.convert_unit": 11,
+              "calendar.cancel_event": 22,
+              "calendar.create_event": 39,
+              "calendar.list_events": 105,
+              "calendar.update_event": 36,
+              "chat_ott.call": 4,
+              "chat_ott.list_chats": 94,
+              "chat_ott.read_chat": 14,
+              "chat_ott.send_location": 6,
+              "chat_ott.send_message": 69,
+              "contacts.search": 234,
+              "contacts.update": 10,
+              "door_lock.grant_guest_code": 8,
+              "door_lock.list_locks": 27,
+              "door_lock.set_lock": 30,
+              "email.archive": 7,
+              "email.create_draft": 24,
+              "email.list": 8,
+              "email.read": 5,
+              "email.reply": 5,
+              "email.send": 2,
+              "ewallet.get_balance": 44,
+              "ewallet.pay_qr": 4,
+              "ewallet.topup_mobile": 10,
+              "ewallet.transfer": 33,
+              "exchange_rate.convert": 12,
+              "exchange_rate.get_rate": 13,
+              "fitness.get_activity": 15,
+              "fitness.log_workout": 14,
+              "fitness.set_goal": 12,
+              "flights.book": 18,
+              "flights.cancel": 4,
+              "flights.check_in": 7,
+              "flights.my_bookings": 9,
+              "flights.search": 7,
+              "food_delivery.cancel_order": 6,
+              "food_delivery.get_menu": 23,
+              "food_delivery.list_restaurants": 26,
+              "food_delivery.order_history": 13,
+              "food_delivery.place_order": 28,
+              "fuel_price.get_price": 13,
+              "gold_price.get_price": 33,
+              "home_automation.create_rule": 20,
+              "home_automation.delete_rule": 18,
+              "home_automation.list_rules": 12,
+              "home_energy.get_usage": 17,
+              "home_energy.set_alert": 13,
+              "home_security.acknowledge_alert": 13,
+              "home_security.arm": 3,
+              "home_security.get_camera": 8,
+              "home_security.list_alerts": 25,
+              "household_chores.assign": 30,
+              "household_chores.list_chores": 21,
+              "learning.enroll": 13,
+              "learning.list_courses": 23,
+              "learning.log_progress": 15,
+              "learning.schedule_lesson": 10,
+              "library.reserve": 20,
+              "library.search": 16,
+              "lottery.check_ticket": 13,
+              "lottery.get_results": 13,
+              "loyalty.get_points": 19,
+              "loyalty.list_vouchers": 7,
+              "loyalty.redeem": 22,
+              "maps.get_route": 24,
+              "maps.save_place": 13,
+              "maps.search_place": 17,
+              "medication.add": 5,
+              "medication.list": 18,
+              "medication.log_taken": 10,
+              "medication.remove": 8,
+              "music.add_to_playlist": 6,
+              "music.control": 4,
+              "music.list_tracks": 15,
+              "music.play": 15,
+              "news.headlines": 4,
+              "news.save": 15,
+              "news.search": 24,
+              "notes.append": 6,
+              "notes.create": 32,
+              "notes.list": 11,
+              "package_tracking.reschedule_delivery": 5,
+              "package_tracking.schedule_pickup": 13,
+              "package_tracking.track": 10,
+              "phone.call": 36,
+              "phone.recent_calls": 5,
+              "podcast_radio.play": 4,
+              "podcast_radio.queue": 14,
+              "podcast_radio.search": 20,
+              "podcast_radio.subscribe": 5,
+              "reminders.complete": 5,
+              "reminders.create": 115,
+              "reminders.delete": 2,
+              "reminders.list": 11,
+              "ride_hailing.book": 44,
+              "ride_hailing.cancel": 8,
+              "ride_hailing.get_quotes": 2,
+              "ride_hailing.get_ride": 5,
+              "robot_vacuum.get_status": 15,
+              "robot_vacuum.start": 19,
+              "robot_vacuum.stop": 14,
+              "shopping_list.add": 13,
+              "shopping_list.check": 7,
+              "shopping_list.get": 8,
+              "shopping_list.remove": 5,
+              "smart_home.climate_set": 39,
+              "smart_home.fan_set": 8,
+              "smart_home.get_status": 107,
+              "smart_home.light_set": 126,
+              "smart_home.scene_run": 1,
+              "smart_home.switch_set": 4,
+              "sms.read_recent": 6,
+              "sms.send": 79,
+              "subscriptions.cancel": 29,
+              "subscriptions.list": 16,
+              "sys.ask_missing_info": 217,
+              "tasks.add": 40,
+              "tasks.complete": 14,
+              "tasks.list": 14,
+              "tv.control": 6,
+              "tv.guide": 7,
+              "tv.record": 6,
+              "tv.tune": 3,
+              "video_meeting.create": 14,
+              "video_meeting.join": 11,
+              "video_meeting.list_meetings": 14,
+              "weather.get_current": 18,
+              "weather.get_forecast": 60
+            },
+            "call_count_distribution": {
+              "0": 111,
+              "1": 369,
+              "2": 428,
+              "3": 359,
+              "4": 161,
+              "5": 107,
+              "6": 10
+            },
+            "multi_step_samples": 1065,
+            "cross_app_samples": 715,
+            "gold_empty_samples": 111,
+            "missing_info_samples": 217,
+            "temporal_expression_sample_counts": {
+              "chiều mai": 15,
+              "cuối tuần": 7,
+              "hôm nay": 39,
+              "hôm qua": 15,
+              "ngày kia": 1,
+              "ngày mai": 2,
+              "nửa tiếng": 34,
+              "phút nữa": 3,
+              "sáng mai": 129,
+              "tháng sau": 3,
+              "tuần sau": 19,
+              "tối nay": 57
+            }
+          }
+        },
+        "jsonl_sha256": "24c42c79fbe8db932fe9817d041c0d0ca422ac8177b413cc1be0cda1fd8941a8",
+        "tool_statistics": {
+          "tool_count": 147,
+          "names": [
+            "alarm.create",
+            "alarm.delete",
+            "alarm.list",
+            "alarm.update",
+            "appliances.list",
+            "appliances.start_cycle",
+            "appliances.stop",
+            "banking.get_balance",
+            "banking.list_beneficiaries",
+            "banking.list_transactions",
+            "banking.open_savings",
+            "banking.transfer",
+            "bike_rental.find_bikes",
+            "bike_rental.reserve",
+            "bill_payment.list_bills",
+            "bill_payment.pay",
+            "bill_payment.schedule_autopay",
+            "calculator.calculate",
+            "calculator.convert_unit",
+            "calendar.cancel_event",
+            "calendar.create_event",
+            "calendar.list_events",
+            "calendar.update_event",
+            "chat_ott.call",
+            "chat_ott.list_chats",
+            "chat_ott.read_chat",
+            "chat_ott.send_location",
+            "chat_ott.send_message",
+            "contacts.get",
+            "contacts.search",
+            "contacts.update",
+            "door_lock.grant_guest_code",
+            "door_lock.list_locks",
+            "door_lock.set_lock",
+            "email.archive",
+            "email.create_draft",
+            "email.list",
+            "email.read",
+            "email.reply",
+            "email.send",
+            "ewallet.get_balance",
+            "ewallet.pay_qr",
+            "ewallet.topup_mobile",
+            "ewallet.transfer",
+            "exchange_rate.convert",
+            "exchange_rate.get_rate",
+            "fitness.get_activity",
+            "fitness.log_workout",
+            "fitness.set_goal",
+            "flights.book",
+            "flights.cancel",
+            "flights.check_in",
+            "flights.my_bookings",
+            "flights.search",
+            "food_delivery.cancel_order",
+            "food_delivery.get_menu",
+            "food_delivery.list_restaurants",
+            "food_delivery.order_history",
+            "food_delivery.place_order",
+            "fuel_price.get_price",
+            "gold_price.get_price",
+            "home_automation.create_rule",
+            "home_automation.delete_rule",
+            "home_automation.list_rules",
+            "home_energy.get_usage",
+            "home_energy.set_alert",
+            "home_security.acknowledge_alert",
+            "home_security.arm",
+            "home_security.get_camera",
+            "home_security.list_alerts",
+            "household_chores.assign",
+            "household_chores.list_chores",
+            "learning.enroll",
+            "learning.list_courses",
+            "learning.log_progress",
+            "learning.schedule_lesson",
+            "library.reserve",
+            "library.search",
+            "lottery.check_ticket",
+            "lottery.get_results",
+            "loyalty.get_points",
+            "loyalty.list_vouchers",
+            "loyalty.redeem",
+            "maps.get_route",
+            "maps.save_place",
+            "maps.search_place",
+            "medication.add",
+            "medication.list",
+            "medication.log_taken",
+            "medication.remove",
+            "music.add_to_playlist",
+            "music.control",
+            "music.list_tracks",
+            "music.play",
+            "news.headlines",
+            "news.save",
+            "news.search",
+            "notes.append",
+            "notes.create",
+            "notes.list",
+            "package_tracking.reschedule_delivery",
+            "package_tracking.schedule_pickup",
+            "package_tracking.track",
+            "phone.call",
+            "phone.recent_calls",
+            "podcast_radio.play",
+            "podcast_radio.queue",
+            "podcast_radio.search",
+            "podcast_radio.subscribe",
+            "reminders.complete",
+            "reminders.create",
+            "reminders.delete",
+            "reminders.list",
+            "ride_hailing.book",
+            "ride_hailing.cancel",
+            "ride_hailing.get_quotes",
+            "ride_hailing.get_ride",
+            "robot_vacuum.get_status",
+            "robot_vacuum.start",
+            "robot_vacuum.stop",
+            "shopping_list.add",
+            "shopping_list.check",
+            "shopping_list.get",
+            "shopping_list.remove",
+            "smart_home.climate_set",
+            "smart_home.fan_set",
+            "smart_home.get_status",
+            "smart_home.light_set",
+            "smart_home.scene_run",
+            "smart_home.switch_set",
+            "sms.read_recent",
+            "sms.send",
+            "subscriptions.cancel",
+            "subscriptions.list",
+            "sys.ask_missing_info",
+            "tasks.add",
+            "tasks.complete",
+            "tasks.list",
+            "tv.control",
+            "tv.guide",
+            "tv.record",
+            "tv.tune",
+            "video_meeting.create",
+            "video_meeting.join",
+            "video_meeting.list_meetings",
+            "weather.get_current",
+            "weather.get_forecast"
+          ],
+          "operation_class_counts": {
+            "read/declared": 62,
+            "write/declared": 84,
+            "meta/declared": 1
+          },
+          "extensions": {
+            "smart_home.light_set": [
+              {
+                "path": "/parameters/properties/device_id/x-ref",
+                "extension": "x-ref",
+                "value": "smart_home.devices"
+              }
+            ],
+            "smart_home.fan_set": [
+              {
+                "path": "/parameters/properties/device_id/x-ref",
+                "extension": "x-ref",
+                "value": "smart_home.devices"
+              }
+            ],
+            "smart_home.climate_set": [
+              {
+                "path": "/parameters/properties/device_id/x-ref",
+                "extension": "x-ref",
+                "value": "smart_home.devices"
+              }
+            ],
+            "smart_home.switch_set": [
+              {
+                "path": "/parameters/properties/device_id/x-ref",
+                "extension": "x-ref",
+                "value": "smart_home.devices"
+              }
+            ],
+            "smart_home.scene_run": [
+              {
+                "path": "/parameters/properties/scene_id/x-ref",
+                "extension": "x-ref",
+                "value": "smart_home.scenes"
+              }
+            ],
+            "home_security.get_camera": [
+              {
+                "path": "/parameters/properties/location/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "home_security.acknowledge_alert": [
+              {
+                "path": "/parameters/properties/alert_id/x-ref",
+                "extension": "x-ref",
+                "value": "home_security.alerts"
+              }
+            ],
+            "door_lock.set_lock": [
+              {
+                "path": "/parameters/properties/lock_id/x-ref",
+                "extension": "x-ref",
+                "value": "door_lock.locks"
+              }
+            ],
+            "door_lock.grant_guest_code": [
+              {
+                "path": "/parameters/properties/lock_id/x-ref",
+                "extension": "x-ref",
+                "value": "door_lock.locks"
+              },
+              {
+                "path": "/parameters/properties/label/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "appliances.start_cycle": [
+              {
+                "path": "/parameters/properties/appliance_id/x-ref",
+                "extension": "x-ref",
+                "value": "appliances.appliances"
+              }
+            ],
+            "appliances.stop": [
+              {
+                "path": "/parameters/properties/appliance_id/x-ref",
+                "extension": "x-ref",
+                "value": "appliances.appliances"
+              }
+            ],
+            "alarm.create": [
+              {
+                "path": "/parameters/properties/label/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "alarm.update": [
+              {
+                "path": "/parameters/properties/alarm_id/x-ref",
+                "extension": "x-ref",
+                "value": "alarm.alarms"
+              },
+              {
+                "path": "/parameters/properties/label/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "alarm.delete": [
+              {
+                "path": "/parameters/properties/alarm_id/x-ref",
+                "extension": "x-ref",
+                "value": "alarm.alarms"
+              }
+            ],
+            "reminders.create": [
+              {
+                "path": "/parameters/properties/content/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "reminders.complete": [
+              {
+                "path": "/parameters/properties/reminder_id/x-ref",
+                "extension": "x-ref",
+                "value": "reminders.reminders"
+              }
+            ],
+            "reminders.delete": [
+              {
+                "path": "/parameters/properties/reminder_id/x-ref",
+                "extension": "x-ref",
+                "value": "reminders.reminders"
+              }
+            ],
+            "calendar.create_event": [
+              {
+                "path": "/parameters/properties/title/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              },
+              {
+                "path": "/parameters/properties/location/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "calendar.update_event": [
+              {
+                "path": "/parameters/properties/event_id/x-ref",
+                "extension": "x-ref",
+                "value": "calendar.events"
+              },
+              {
+                "path": "/parameters/properties/title/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              },
+              {
+                "path": "/parameters/properties/location/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "calendar.cancel_event": [
+              {
+                "path": "/parameters/properties/event_id/x-ref",
+                "extension": "x-ref",
+                "value": "calendar.events"
+              }
+            ],
+            "notes.create": [
+              {
+                "path": "/parameters/properties/title/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              },
+              {
+                "path": "/parameters/properties/content/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "notes.append": [
+              {
+                "path": "/parameters/properties/note_id/x-ref",
+                "extension": "x-ref",
+                "value": "notes.notes"
+              },
+              {
+                "path": "/parameters/properties/content/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "tasks.add": [
+              {
+                "path": "/parameters/properties/title/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "tasks.complete": [
+              {
+                "path": "/parameters/properties/task_id/x-ref",
+                "extension": "x-ref",
+                "value": "tasks.tasks"
+              }
+            ],
+            "contacts.get": [
+              {
+                "path": "/parameters/properties/contact_id/x-ref",
+                "extension": "x-ref",
+                "value": "contacts.contacts"
+              }
+            ],
+            "contacts.update": [
+              {
+                "path": "/parameters/properties/contact_id/x-ref",
+                "extension": "x-ref",
+                "value": "contacts.contacts"
+              },
+              {
+                "path": "/parameters/x-one-of",
+                "extension": "x-one-of",
+                "value": [
+                  [
+                    "phone"
+                  ],
+                  [
+                    "email"
+                  ]
+                ]
+              }
+            ],
+            "phone.call": [
+              {
+                "path": "/parameters/properties/contact_id/x-ref",
+                "extension": "x-ref",
+                "value": "contacts.contacts"
+              },
+              {
+                "path": "/parameters/x-one-of",
+                "extension": "x-one-of",
+                "value": [
+                  [
+                    "contact_id"
+                  ],
+                  [
+                    "phone_number"
+                  ]
+                ]
+              }
+            ],
+            "sms.send": [
+              {
+                "path": "/parameters/properties/contact_id/x-ref",
+                "extension": "x-ref",
+                "value": "contacts.contacts"
+              },
+              {
+                "path": "/parameters/properties/content/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              },
+              {
+                "path": "/parameters/x-one-of",
+                "extension": "x-one-of",
+                "value": [
+                  [
+                    "contact_id"
+                  ],
+                  [
+                    "phone_number"
+                  ]
+                ]
+              }
+            ],
+            "sms.read_recent": [
+              {
+                "path": "/parameters/properties/contact_id/x-ref",
+                "extension": "x-ref",
+                "value": "contacts.contacts"
+              }
+            ],
+            "chat_ott.read_chat": [
+              {
+                "path": "/parameters/properties/chat_id/x-ref",
+                "extension": "x-ref",
+                "value": "chat_ott.chats"
+              }
+            ],
+            "chat_ott.send_message": [
+              {
+                "path": "/parameters/properties/chat_id/x-ref",
+                "extension": "x-ref",
+                "value": "chat_ott.chats"
+              },
+              {
+                "path": "/parameters/properties/content/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "chat_ott.send_location": [
+              {
+                "path": "/parameters/properties/chat_id/x-ref",
+                "extension": "x-ref",
+                "value": "chat_ott.chats"
+              }
+            ],
+            "chat_ott.call": [
+              {
+                "path": "/parameters/properties/chat_id/x-ref",
+                "extension": "x-ref",
+                "value": "chat_ott.chats"
+              }
+            ],
+            "email.read": [
+              {
+                "path": "/parameters/properties/email_id/x-ref",
+                "extension": "x-ref",
+                "value": "email.emails"
+              }
+            ],
+            "email.send": [
+              {
+                "path": "/parameters/properties/subject/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              },
+              {
+                "path": "/parameters/properties/body/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "email.create_draft": [
+              {
+                "path": "/parameters/properties/subject/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              },
+              {
+                "path": "/parameters/properties/body/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "email.reply": [
+              {
+                "path": "/parameters/properties/email_id/x-ref",
+                "extension": "x-ref",
+                "value": "email.emails"
+              },
+              {
+                "path": "/parameters/properties/body/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "email.archive": [
+              {
+                "path": "/parameters/properties/email_id/x-ref",
+                "extension": "x-ref",
+                "value": "email.emails"
+              }
+            ],
+            "video_meeting.create": [
+              {
+                "path": "/parameters/properties/title/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "video_meeting.join": [
+              {
+                "path": "/parameters/properties/meeting_id/x-ref",
+                "extension": "x-ref",
+                "value": "video_meeting.meetings"
+              }
+            ],
+            "banking.list_transactions": [
+              {
+                "path": "/parameters/properties/account_id/x-ref",
+                "extension": "x-ref",
+                "value": "banking.accounts"
+              }
+            ],
+            "banking.transfer": [
+              {
+                "path": "/parameters/properties/from_account_id/x-ref",
+                "extension": "x-ref",
+                "value": "banking.accounts"
+              },
+              {
+                "path": "/parameters/properties/beneficiary_id/x-ref",
+                "extension": "x-ref",
+                "value": "banking.beneficiaries"
+              },
+              {
+                "path": "/parameters/properties/note/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "banking.open_savings": [
+              {
+                "path": "/parameters/properties/from_account_id/x-ref",
+                "extension": "x-ref",
+                "value": "banking.accounts"
+              }
+            ],
+            "ewallet.transfer": [
+              {
+                "path": "/parameters/properties/contact_id/x-ref",
+                "extension": "x-ref",
+                "value": "contacts.contacts"
+              },
+              {
+                "path": "/parameters/properties/note/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              },
+              {
+                "path": "/parameters/x-one-of",
+                "extension": "x-one-of",
+                "value": [
+                  [
+                    "contact_id"
+                  ],
+                  [
+                    "phone"
+                  ]
+                ]
+              }
+            ],
+            "bill_payment.pay": [
+              {
+                "path": "/parameters/properties/bill_id/x-ref",
+                "extension": "x-ref",
+                "value": "bill_payment.bills"
+              }
+            ],
+            "weather.get_current": [
+              {
+                "path": "/parameters/properties/location/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "weather.get_forecast": [
+              {
+                "path": "/parameters/properties/location/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "news.save": [
+              {
+                "path": "/parameters/properties/article_id/x-ref",
+                "extension": "x-ref",
+                "value": "news.articles"
+              }
+            ],
+            "calculator.calculate": [
+              {
+                "path": "/parameters/properties/expression/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "maps.search_place": [
+              {
+                "path": "/parameters/properties/near/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "maps.get_route": [
+              {
+                "path": "/parameters/properties/origin/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              },
+              {
+                "path": "/parameters/properties/destination/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "maps.save_place": [
+              {
+                "path": "/parameters/properties/place_id/x-ref",
+                "extension": "x-ref",
+                "value": "maps.places"
+              },
+              {
+                "path": "/parameters/properties/label/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "food_delivery.get_menu": [
+              {
+                "path": "/parameters/properties/restaurant_id/x-ref",
+                "extension": "x-ref",
+                "value": "food_delivery.restaurants"
+              }
+            ],
+            "food_delivery.place_order": [
+              {
+                "path": "/parameters/properties/restaurant_id/x-ref",
+                "extension": "x-ref",
+                "value": "food_delivery.restaurants"
+              },
+              {
+                "path": "/parameters/properties/address/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "food_delivery.cancel_order": [
+              {
+                "path": "/parameters/properties/order_id/x-ref",
+                "extension": "x-ref",
+                "value": "food_delivery.orders"
+              }
+            ],
+            "ride_hailing.get_quotes": [
+              {
+                "path": "/parameters/properties/pickup/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              },
+              {
+                "path": "/parameters/properties/dropoff/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "ride_hailing.book": [
+              {
+                "path": "/parameters/properties/pickup/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              },
+              {
+                "path": "/parameters/properties/dropoff/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "ride_hailing.cancel": [
+              {
+                "path": "/parameters/properties/ride_id/x-ref",
+                "extension": "x-ref",
+                "value": "ride_hailing.rides"
+              }
+            ],
+            "ride_hailing.get_ride": [
+              {
+                "path": "/parameters/properties/ride_id/x-ref",
+                "extension": "x-ref",
+                "value": "ride_hailing.rides"
+              }
+            ],
+            "flights.book": [
+              {
+                "path": "/parameters/properties/flight_id/x-ref",
+                "extension": "x-ref",
+                "value": "flights.flights"
+              }
+            ],
+            "flights.cancel": [
+              {
+                "path": "/parameters/properties/booking_id/x-ref",
+                "extension": "x-ref",
+                "value": "flights.bookings"
+              }
+            ],
+            "flights.check_in": [
+              {
+                "path": "/parameters/properties/booking_id/x-ref",
+                "extension": "x-ref",
+                "value": "flights.bookings"
+              }
+            ],
+            "shopping_list.add": [
+              {
+                "path": "/parameters/properties/name/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "shopping_list.remove": [
+              {
+                "path": "/parameters/properties/item_id/x-ref",
+                "extension": "x-ref",
+                "value": "shopping_list.items"
+              }
+            ],
+            "shopping_list.check": [
+              {
+                "path": "/parameters/properties/item_id/x-ref",
+                "extension": "x-ref",
+                "value": "shopping_list.items"
+              }
+            ],
+            "package_tracking.schedule_pickup": [
+              {
+                "path": "/parameters/properties/address/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "music.play": [
+              {
+                "path": "/parameters/properties/track_id/x-ref",
+                "extension": "x-ref",
+                "value": "music.tracks"
+              },
+              {
+                "path": "/parameters/properties/playlist_id/x-ref",
+                "extension": "x-ref",
+                "value": "music.playlists"
+              },
+              {
+                "path": "/parameters/x-one-of",
+                "extension": "x-one-of",
+                "value": [
+                  [
+                    "track_id"
+                  ],
+                  [
+                    "playlist_id"
+                  ]
+                ]
+              }
+            ],
+            "music.add_to_playlist": [
+              {
+                "path": "/parameters/properties/track_id/x-ref",
+                "extension": "x-ref",
+                "value": "music.tracks"
+              },
+              {
+                "path": "/parameters/properties/playlist_id/x-ref",
+                "extension": "x-ref",
+                "value": "music.playlists"
+              }
+            ],
+            "tv.record": [
+              {
+                "path": "/parameters/properties/program_id/x-ref",
+                "extension": "x-ref",
+                "value": "tv.programs"
+              }
+            ],
+            "podcast_radio.play": [
+              {
+                "path": "/parameters/properties/episode_id/x-ref",
+                "extension": "x-ref",
+                "value": "podcast_radio.episodes"
+              },
+              {
+                "path": "/parameters/x-one-of",
+                "extension": "x-one-of",
+                "value": [
+                  [
+                    "episode_id"
+                  ],
+                  [
+                    "station"
+                  ]
+                ]
+              }
+            ],
+            "podcast_radio.subscribe": [
+              {
+                "path": "/parameters/properties/show_id/x-ref",
+                "extension": "x-ref",
+                "value": "podcast_radio.shows"
+              }
+            ],
+            "podcast_radio.queue": [
+              {
+                "path": "/parameters/properties/episode_id/x-ref",
+                "extension": "x-ref",
+                "value": "podcast_radio.episodes"
+              }
+            ],
+            "medication.add": [
+              {
+                "path": "/parameters/properties/name/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "medication.log_taken": [
+              {
+                "path": "/parameters/properties/schedule_id/x-ref",
+                "extension": "x-ref",
+                "value": "medication.schedules"
+              }
+            ],
+            "medication.remove": [
+              {
+                "path": "/parameters/properties/schedule_id/x-ref",
+                "extension": "x-ref",
+                "value": "medication.schedules"
+              }
+            ],
+            "learning.enroll": [
+              {
+                "path": "/parameters/properties/course_id/x-ref",
+                "extension": "x-ref",
+                "value": "learning.courses"
+              }
+            ],
+            "learning.schedule_lesson": [
+              {
+                "path": "/parameters/properties/course_id/x-ref",
+                "extension": "x-ref",
+                "value": "learning.courses"
+              }
+            ],
+            "learning.log_progress": [
+              {
+                "path": "/parameters/properties/course_id/x-ref",
+                "extension": "x-ref",
+                "value": "learning.courses"
+              }
+            ],
+            "bike_rental.find_bikes": [
+              {
+                "path": "/parameters/properties/near/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "bike_rental.reserve": [
+              {
+                "path": "/parameters/properties/bike_id/x-ref",
+                "extension": "x-ref",
+                "value": "bike_rental.bikes"
+              }
+            ],
+            "home_automation.create_rule": [
+              {
+                "path": "/parameters/properties/device_id/x-ref",
+                "extension": "x-ref",
+                "value": "smart_home.devices"
+              },
+              {
+                "path": "/parameters/properties/title/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "home_automation.delete_rule": [
+              {
+                "path": "/parameters/properties/rule_id/x-ref",
+                "extension": "x-ref",
+                "value": "home_automation.rules"
+              }
+            ],
+            "household_chores.assign": [
+              {
+                "path": "/parameters/properties/chore_id/x-ref",
+                "extension": "x-ref",
+                "value": "household_chores.chores"
+              }
+            ],
+            "library.reserve": [
+              {
+                "path": "/parameters/properties/book_id/x-ref",
+                "extension": "x-ref",
+                "value": "library.books"
+              }
+            ],
+            "subscriptions.cancel": [
+              {
+                "path": "/parameters/properties/subscription_id/x-ref",
+                "extension": "x-ref",
+                "value": "subscriptions.subscriptions"
+              }
+            ]
+          },
+          "asr_sensitive_schema_heuristics": {
+            "contacts": [
+              "banking.transfer",
+              "bill_payment.list_bills",
+              "contacts.get",
+              "contacts.update",
+              "email.archive",
+              "email.create_draft",
+              "email.read",
+              "email.reply",
+              "email.send",
+              "ewallet.topup_mobile",
+              "ewallet.transfer",
+              "phone.call",
+              "sms.read_recent",
+              "sms.send",
+              "sys.ask_missing_info",
+              "video_meeting.create"
+            ],
+            "amounts": [
+              "banking.open_savings",
+              "banking.transfer",
+              "ewallet.pay_qr",
+              "ewallet.topup_mobile",
+              "ewallet.transfer",
+              "exchange_rate.convert"
+            ],
+            "addresses": [
+              "calendar.create_event",
+              "calendar.update_event",
+              "flights.search",
+              "food_delivery.place_order",
+              "home_security.get_camera",
+              "maps.get_route",
+              "package_tracking.schedule_pickup",
+              "ride_hailing.book",
+              "ride_hailing.get_quotes",
+              "weather.get_current",
+              "weather.get_forecast"
+            ],
+            "times": [
+              "alarm.create",
+              "alarm.update",
+              "calendar.cancel_event",
+              "calendar.create_event",
+              "calendar.list_events",
+              "calendar.update_event",
+              "door_lock.grant_guest_code",
+              "fitness.get_activity",
+              "fitness.log_workout",
+              "flights.search",
+              "home_automation.create_rule",
+              "home_security.list_alerts",
+              "learning.schedule_lesson",
+              "lottery.check_ticket",
+              "lottery.get_results",
+              "medication.add",
+              "medication.log_taken",
+              "package_tracking.reschedule_delivery",
+              "package_tracking.schedule_pickup",
+              "reminders.create",
+              "reminders.list",
+              "ride_hailing.book",
+              "sys.ask_missing_info",
+              "tasks.add",
+              "tv.guide",
+              "video_meeting.create",
+              "weather.get_forecast"
+            ],
+            "device_names": [
+              "home_automation.create_rule",
+              "music.play",
+              "robot_vacuum.start",
+              "smart_home.climate_set",
+              "smart_home.fan_set",
+              "smart_home.get_status",
+              "smart_home.light_set",
+              "smart_home.switch_set"
+            ]
+          },
+          "labeled_action_operation_counts": {
+            "meta/declared": 217,
+            "read/declared": 1599,
+            "write/declared": 1725
+          }
+        }
+      },
+      "public_test": {
+        "jsonl": {
+          "path": "C:/Users/ADMIN/OneDrive - VNU-HCMUS/Documents/XuanQuang/datalife/train+public_test/public_test/public_test.jsonl",
+          "present": true,
+          "metadata": {
+            "present": false
+          }
+        },
+        "catalog": {
+          "path": "C:/Users/ADMIN/OneDrive - VNU-HCMUS/Documents/XuanQuang/datalife/train+public_test/public_test/public_test_tools_catalog.json",
+          "present": true,
+          "metadata": {
+            "present": false
+          }
+        },
+        "statistics": {
+          "sample_count": 634,
+          "unique_id_count": 634,
+          "missing_id_count": 0,
+          "installed_app_sample_counts": {
+            "alarm": 190,
+            "banking": 202,
+            "bill_payment": 63,
+            "calendar": 342,
+            "chat_ott": 275,
+            "contacts": 352,
+            "ecommerce": 67,
+            "email": 152,
+            "event_tickets": 64,
+            "ewallet": 187,
+            "flights": 71,
+            "food_delivery": 190,
+            "fuel_price": 136,
+            "gold_price": 139,
+            "grocery": 107,
+            "habit_tracker": 35,
+            "maps": 143,
+            "music": 144,
+            "notes": 239,
+            "pantry": 74,
+            "parking": 87,
+            "phone": 201,
+            "public_transit": 82,
+            "recipes": 88,
+            "reminders": 333,
+            "ride_hailing": 229,
+            "shopping_list": 83,
+            "smart_home": 221,
+            "sms": 166,
+            "stocks": 59,
+            "tasks": 201,
+            "train_bus_tickets": 74,
+            "translator": 50,
+            "tv": 122,
+            "weather": 239
+          },
+          "samples_with_history": 419,
+          "referenced_audio": {
+            "present": 634,
+            "missing": 0,
+            "rejected_path": 0
+          },
+          "train_labels": "NOT INSPECTED (public test)"
+        },
+        "jsonl_sha256": "6274f4ff32ab03c33350029a0672a67884209b7d97f66e80181e446dd955f604",
+        "tool_statistics": {
+          "tool_count": 122,
+          "names": [
+            "alarm.create",
+            "alarm.delete",
+            "alarm.list",
+            "alarm.update",
+            "banking.get_balance",
+            "banking.list_beneficiaries",
+            "banking.list_transactions",
+            "banking.open_savings",
+            "banking.transfer",
+            "bill_payment.list_bills",
+            "bill_payment.pay",
+            "bill_payment.schedule_autopay",
+            "calendar.cancel_event",
+            "calendar.create_event",
+            "calendar.list_events",
+            "calendar.update_event",
+            "chat_ott.call",
+            "chat_ott.list_chats",
+            "chat_ott.read_chat",
+            "chat_ott.send_location",
+            "chat_ott.send_message",
+            "contacts.get",
+            "contacts.search",
+            "contacts.update",
+            "ecommerce.add_to_cart",
+            "ecommerce.cancel_order",
+            "ecommerce.checkout",
+            "ecommerce.order_status",
+            "ecommerce.request_return",
+            "ecommerce.search",
+            "email.archive",
+            "email.create_draft",
+            "email.list",
+            "email.read",
+            "email.reply",
+            "email.send",
+            "event_tickets.book",
+            "event_tickets.search",
+            "ewallet.get_balance",
+            "ewallet.pay_qr",
+            "ewallet.topup_mobile",
+            "ewallet.transfer",
+            "flights.book",
+            "flights.cancel",
+            "flights.check_in",
+            "flights.my_bookings",
+            "flights.search",
+            "food_delivery.cancel_order",
+            "food_delivery.get_menu",
+            "food_delivery.list_restaurants",
+            "food_delivery.order_history",
+            "food_delivery.place_order",
+            "fuel_price.get_price",
+            "gold_price.get_price",
+            "grocery.add_to_cart",
+            "grocery.checkout",
+            "grocery.search",
+            "habit_tracker.list_habits",
+            "habit_tracker.log",
+            "maps.get_route",
+            "maps.save_place",
+            "maps.search_place",
+            "music.add_to_playlist",
+            "music.control",
+            "music.list_tracks",
+            "music.play",
+            "notes.append",
+            "notes.create",
+            "notes.list",
+            "pantry.consume",
+            "pantry.list_items",
+            "parking.end_session",
+            "parking.find",
+            "parking.list_sessions",
+            "parking.reserve",
+            "phone.call",
+            "phone.recent_calls",
+            "public_transit.find_routes",
+            "public_transit.next_departures",
+            "public_transit.topup_card",
+            "recipes.get",
+            "recipes.save",
+            "recipes.search",
+            "reminders.complete",
+            "reminders.create",
+            "reminders.delete",
+            "reminders.list",
+            "ride_hailing.book",
+            "ride_hailing.cancel",
+            "ride_hailing.get_quotes",
+            "ride_hailing.get_ride",
+            "shopping_list.add",
+            "shopping_list.check",
+            "shopping_list.get",
+            "shopping_list.remove",
+            "smart_home.climate_set",
+            "smart_home.fan_set",
+            "smart_home.get_status",
+            "smart_home.light_set",
+            "smart_home.scene_run",
+            "smart_home.switch_set",
+            "sms.read_recent",
+            "sms.send",
+            "stocks.get_portfolio",
+            "stocks.get_quote",
+            "stocks.place_order",
+            "stocks.set_price_alert",
+            "sys.ask_missing_info",
+            "tasks.add",
+            "tasks.complete",
+            "tasks.list",
+            "train_bus_tickets.book",
+            "train_bus_tickets.cancel",
+            "train_bus_tickets.my_bookings",
+            "train_bus_tickets.search",
+            "translator.translate",
+            "tv.control",
+            "tv.guide",
+            "tv.record",
+            "tv.tune",
+            "weather.get_current",
+            "weather.get_forecast"
+          ],
+          "operation_class_counts": {
+            "read/declared": 52,
+            "write/declared": 69,
+            "meta/declared": 1
+          },
+          "extensions": {
+            "smart_home.light_set": [
+              {
+                "path": "/parameters/properties/device_id/x-ref",
+                "extension": "x-ref",
+                "value": "smart_home.devices"
+              }
+            ],
+            "smart_home.fan_set": [
+              {
+                "path": "/parameters/properties/device_id/x-ref",
+                "extension": "x-ref",
+                "value": "smart_home.devices"
+              }
+            ],
+            "smart_home.climate_set": [
+              {
+                "path": "/parameters/properties/device_id/x-ref",
+                "extension": "x-ref",
+                "value": "smart_home.devices"
+              }
+            ],
+            "smart_home.switch_set": [
+              {
+                "path": "/parameters/properties/device_id/x-ref",
+                "extension": "x-ref",
+                "value": "smart_home.devices"
+              }
+            ],
+            "smart_home.scene_run": [
+              {
+                "path": "/parameters/properties/scene_id/x-ref",
+                "extension": "x-ref",
+                "value": "smart_home.scenes"
+              }
+            ],
+            "alarm.create": [
+              {
+                "path": "/parameters/properties/label/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "alarm.update": [
+              {
+                "path": "/parameters/properties/alarm_id/x-ref",
+                "extension": "x-ref",
+                "value": "alarm.alarms"
+              },
+              {
+                "path": "/parameters/properties/label/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "alarm.delete": [
+              {
+                "path": "/parameters/properties/alarm_id/x-ref",
+                "extension": "x-ref",
+                "value": "alarm.alarms"
+              }
+            ],
+            "reminders.create": [
+              {
+                "path": "/parameters/properties/content/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "reminders.complete": [
+              {
+                "path": "/parameters/properties/reminder_id/x-ref",
+                "extension": "x-ref",
+                "value": "reminders.reminders"
+              }
+            ],
+            "reminders.delete": [
+              {
+                "path": "/parameters/properties/reminder_id/x-ref",
+                "extension": "x-ref",
+                "value": "reminders.reminders"
+              }
+            ],
+            "calendar.create_event": [
+              {
+                "path": "/parameters/properties/title/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              },
+              {
+                "path": "/parameters/properties/location/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "calendar.update_event": [
+              {
+                "path": "/parameters/properties/event_id/x-ref",
+                "extension": "x-ref",
+                "value": "calendar.events"
+              },
+              {
+                "path": "/parameters/properties/title/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              },
+              {
+                "path": "/parameters/properties/location/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "calendar.cancel_event": [
+              {
+                "path": "/parameters/properties/event_id/x-ref",
+                "extension": "x-ref",
+                "value": "calendar.events"
+              }
+            ],
+            "notes.create": [
+              {
+                "path": "/parameters/properties/title/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              },
+              {
+                "path": "/parameters/properties/content/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "notes.append": [
+              {
+                "path": "/parameters/properties/note_id/x-ref",
+                "extension": "x-ref",
+                "value": "notes.notes"
+              },
+              {
+                "path": "/parameters/properties/content/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "tasks.add": [
+              {
+                "path": "/parameters/properties/title/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "tasks.complete": [
+              {
+                "path": "/parameters/properties/task_id/x-ref",
+                "extension": "x-ref",
+                "value": "tasks.tasks"
+              }
+            ],
+            "contacts.get": [
+              {
+                "path": "/parameters/properties/contact_id/x-ref",
+                "extension": "x-ref",
+                "value": "contacts.contacts"
+              }
+            ],
+            "contacts.update": [
+              {
+                "path": "/parameters/properties/contact_id/x-ref",
+                "extension": "x-ref",
+                "value": "contacts.contacts"
+              },
+              {
+                "path": "/parameters/x-one-of",
+                "extension": "x-one-of",
+                "value": [
+                  [
+                    "phone"
+                  ],
+                  [
+                    "email"
+                  ]
+                ]
+              }
+            ],
+            "phone.call": [
+              {
+                "path": "/parameters/properties/contact_id/x-ref",
+                "extension": "x-ref",
+                "value": "contacts.contacts"
+              },
+              {
+                "path": "/parameters/x-one-of",
+                "extension": "x-one-of",
+                "value": [
+                  [
+                    "contact_id"
+                  ],
+                  [
+                    "phone_number"
+                  ]
+                ]
+              }
+            ],
+            "sms.send": [
+              {
+                "path": "/parameters/properties/contact_id/x-ref",
+                "extension": "x-ref",
+                "value": "contacts.contacts"
+              },
+              {
+                "path": "/parameters/properties/content/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              },
+              {
+                "path": "/parameters/x-one-of",
+                "extension": "x-one-of",
+                "value": [
+                  [
+                    "contact_id"
+                  ],
+                  [
+                    "phone_number"
+                  ]
+                ]
+              }
+            ],
+            "sms.read_recent": [
+              {
+                "path": "/parameters/properties/contact_id/x-ref",
+                "extension": "x-ref",
+                "value": "contacts.contacts"
+              }
+            ],
+            "chat_ott.read_chat": [
+              {
+                "path": "/parameters/properties/chat_id/x-ref",
+                "extension": "x-ref",
+                "value": "chat_ott.chats"
+              }
+            ],
+            "chat_ott.send_message": [
+              {
+                "path": "/parameters/properties/chat_id/x-ref",
+                "extension": "x-ref",
+                "value": "chat_ott.chats"
+              },
+              {
+                "path": "/parameters/properties/content/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "chat_ott.send_location": [
+              {
+                "path": "/parameters/properties/chat_id/x-ref",
+                "extension": "x-ref",
+                "value": "chat_ott.chats"
+              }
+            ],
+            "chat_ott.call": [
+              {
+                "path": "/parameters/properties/chat_id/x-ref",
+                "extension": "x-ref",
+                "value": "chat_ott.chats"
+              }
+            ],
+            "email.read": [
+              {
+                "path": "/parameters/properties/email_id/x-ref",
+                "extension": "x-ref",
+                "value": "email.emails"
+              }
+            ],
+            "email.send": [
+              {
+                "path": "/parameters/properties/subject/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              },
+              {
+                "path": "/parameters/properties/body/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "email.create_draft": [
+              {
+                "path": "/parameters/properties/subject/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              },
+              {
+                "path": "/parameters/properties/body/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "email.reply": [
+              {
+                "path": "/parameters/properties/email_id/x-ref",
+                "extension": "x-ref",
+                "value": "email.emails"
+              },
+              {
+                "path": "/parameters/properties/body/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "email.archive": [
+              {
+                "path": "/parameters/properties/email_id/x-ref",
+                "extension": "x-ref",
+                "value": "email.emails"
+              }
+            ],
+            "banking.list_transactions": [
+              {
+                "path": "/parameters/properties/account_id/x-ref",
+                "extension": "x-ref",
+                "value": "banking.accounts"
+              }
+            ],
+            "banking.transfer": [
+              {
+                "path": "/parameters/properties/from_account_id/x-ref",
+                "extension": "x-ref",
+                "value": "banking.accounts"
+              },
+              {
+                "path": "/parameters/properties/beneficiary_id/x-ref",
+                "extension": "x-ref",
+                "value": "banking.beneficiaries"
+              },
+              {
+                "path": "/parameters/properties/note/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "banking.open_savings": [
+              {
+                "path": "/parameters/properties/from_account_id/x-ref",
+                "extension": "x-ref",
+                "value": "banking.accounts"
+              }
+            ],
+            "ewallet.transfer": [
+              {
+                "path": "/parameters/properties/contact_id/x-ref",
+                "extension": "x-ref",
+                "value": "contacts.contacts"
+              },
+              {
+                "path": "/parameters/properties/note/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              },
+              {
+                "path": "/parameters/x-one-of",
+                "extension": "x-one-of",
+                "value": [
+                  [
+                    "contact_id"
+                  ],
+                  [
+                    "phone"
+                  ]
+                ]
+              }
+            ],
+            "bill_payment.pay": [
+              {
+                "path": "/parameters/properties/bill_id/x-ref",
+                "extension": "x-ref",
+                "value": "bill_payment.bills"
+              }
+            ],
+            "weather.get_current": [
+              {
+                "path": "/parameters/properties/location/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "weather.get_forecast": [
+              {
+                "path": "/parameters/properties/location/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "translator.translate": [
+              {
+                "path": "/parameters/properties/text/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "maps.search_place": [
+              {
+                "path": "/parameters/properties/near/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "maps.get_route": [
+              {
+                "path": "/parameters/properties/origin/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              },
+              {
+                "path": "/parameters/properties/destination/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "maps.save_place": [
+              {
+                "path": "/parameters/properties/place_id/x-ref",
+                "extension": "x-ref",
+                "value": "maps.places"
+              },
+              {
+                "path": "/parameters/properties/label/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "food_delivery.get_menu": [
+              {
+                "path": "/parameters/properties/restaurant_id/x-ref",
+                "extension": "x-ref",
+                "value": "food_delivery.restaurants"
+              }
+            ],
+            "food_delivery.place_order": [
+              {
+                "path": "/parameters/properties/restaurant_id/x-ref",
+                "extension": "x-ref",
+                "value": "food_delivery.restaurants"
+              },
+              {
+                "path": "/parameters/properties/address/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "food_delivery.cancel_order": [
+              {
+                "path": "/parameters/properties/order_id/x-ref",
+                "extension": "x-ref",
+                "value": "food_delivery.orders"
+              }
+            ],
+            "grocery.add_to_cart": [
+              {
+                "path": "/parameters/properties/product_id/x-ref",
+                "extension": "x-ref",
+                "value": "grocery.products"
+              }
+            ],
+            "grocery.checkout": [
+              {
+                "path": "/parameters/properties/address/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "recipes.get": [
+              {
+                "path": "/parameters/properties/recipe_id/x-ref",
+                "extension": "x-ref",
+                "value": "recipes.recipes"
+              }
+            ],
+            "recipes.save": [
+              {
+                "path": "/parameters/properties/recipe_id/x-ref",
+                "extension": "x-ref",
+                "value": "recipes.recipes"
+              }
+            ],
+            "ride_hailing.get_quotes": [
+              {
+                "path": "/parameters/properties/pickup/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              },
+              {
+                "path": "/parameters/properties/dropoff/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "ride_hailing.book": [
+              {
+                "path": "/parameters/properties/pickup/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              },
+              {
+                "path": "/parameters/properties/dropoff/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "ride_hailing.cancel": [
+              {
+                "path": "/parameters/properties/ride_id/x-ref",
+                "extension": "x-ref",
+                "value": "ride_hailing.rides"
+              }
+            ],
+            "ride_hailing.get_ride": [
+              {
+                "path": "/parameters/properties/ride_id/x-ref",
+                "extension": "x-ref",
+                "value": "ride_hailing.rides"
+              }
+            ],
+            "public_transit.find_routes": [
+              {
+                "path": "/parameters/properties/origin/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              },
+              {
+                "path": "/parameters/properties/destination/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "parking.find": [
+              {
+                "path": "/parameters/properties/near/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "parking.reserve": [
+              {
+                "path": "/parameters/properties/lot_id/x-ref",
+                "extension": "x-ref",
+                "value": "parking.lots"
+              }
+            ],
+            "parking.end_session": [
+              {
+                "path": "/parameters/properties/session_id/x-ref",
+                "extension": "x-ref",
+                "value": "parking.sessions"
+              }
+            ],
+            "flights.book": [
+              {
+                "path": "/parameters/properties/flight_id/x-ref",
+                "extension": "x-ref",
+                "value": "flights.flights"
+              }
+            ],
+            "flights.cancel": [
+              {
+                "path": "/parameters/properties/booking_id/x-ref",
+                "extension": "x-ref",
+                "value": "flights.bookings"
+              }
+            ],
+            "flights.check_in": [
+              {
+                "path": "/parameters/properties/booking_id/x-ref",
+                "extension": "x-ref",
+                "value": "flights.bookings"
+              }
+            ],
+            "train_bus_tickets.book": [
+              {
+                "path": "/parameters/properties/trip_id/x-ref",
+                "extension": "x-ref",
+                "value": "train_bus_tickets.trips"
+              }
+            ],
+            "train_bus_tickets.cancel": [
+              {
+                "path": "/parameters/properties/booking_id/x-ref",
+                "extension": "x-ref",
+                "value": "train_bus_tickets.bookings"
+              }
+            ],
+            "ecommerce.order_status": [
+              {
+                "path": "/parameters/properties/order_id/x-ref",
+                "extension": "x-ref",
+                "value": "ecommerce.orders"
+              }
+            ],
+            "ecommerce.add_to_cart": [
+              {
+                "path": "/parameters/properties/product_id/x-ref",
+                "extension": "x-ref",
+                "value": "ecommerce.products"
+              }
+            ],
+            "ecommerce.checkout": [
+              {
+                "path": "/parameters/properties/address/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "ecommerce.cancel_order": [
+              {
+                "path": "/parameters/properties/order_id/x-ref",
+                "extension": "x-ref",
+                "value": "ecommerce.orders"
+              }
+            ],
+            "ecommerce.request_return": [
+              {
+                "path": "/parameters/properties/order_id/x-ref",
+                "extension": "x-ref",
+                "value": "ecommerce.orders"
+              }
+            ],
+            "shopping_list.add": [
+              {
+                "path": "/parameters/properties/name/x-match",
+                "extension": "x-match",
+                "value": "fuzzy"
+              }
+            ],
+            "shopping_list.remove": [
+              {
+                "path": "/parameters/properties/item_id/x-ref",
+                "extension": "x-ref",
+                "value": "shopping_list.items"
+              }
+            ],
+            "shopping_list.check": [
+              {
+                "path": "/parameters/properties/item_id/x-ref",
+                "extension": "x-ref",
+                "value": "shopping_list.items"
+              }
+            ],
+            "music.play": [
+              {
+                "path": "/parameters/properties/track_id/x-ref",
+                "extension": "x-ref",
+                "value": "music.tracks"
+              },
+              {
+                "path": "/parameters/properties/playlist_id/x-ref",
+                "extension": "x-ref",
+                "value": "music.playlists"
+              },
+              {
+                "path": "/parameters/x-one-of",
+                "extension": "x-one-of",
+                "value": [
+                  [
+                    "track_id"
+                  ],
+                  [
+                    "playlist_id"
+                  ]
+                ]
+              }
+            ],
+            "music.add_to_playlist": [
+              {
+                "path": "/parameters/properties/track_id/x-ref",
+                "extension": "x-ref",
+                "value": "music.tracks"
+              },
+              {
+                "path": "/parameters/properties/playlist_id/x-ref",
+                "extension": "x-ref",
+                "value": "music.playlists"
+              }
+            ],
+            "tv.record": [
+              {
+                "path": "/parameters/properties/program_id/x-ref",
+                "extension": "x-ref",
+                "value": "tv.programs"
+              }
+            ],
+            "event_tickets.book": [
+              {
+                "path": "/parameters/properties/event_id/x-ref",
+                "extension": "x-ref",
+                "value": "event_tickets.events"
+              }
+            ],
+            "habit_tracker.log": [
+              {
+                "path": "/parameters/properties/habit_id/x-ref",
+                "extension": "x-ref",
+                "value": "habit_tracker.habits"
+              }
+            ],
+            "pantry.consume": [
+              {
+                "path": "/parameters/properties/item_id/x-ref",
+                "extension": "x-ref",
+                "value": "pantry.items"
+              }
+            ]
+          },
+          "asr_sensitive_schema_heuristics": {
+            "contacts": [
+              "banking.transfer",
+              "bill_payment.list_bills",
+              "contacts.get",
+              "contacts.update",
+              "email.archive",
+              "email.create_draft",
+              "email.read",
+              "email.reply",
+              "email.send",
+              "ewallet.topup_mobile",
+              "ewallet.transfer",
+              "phone.call",
+              "sms.read_recent",
+              "sms.send",
+              "sys.ask_missing_info"
+            ],
+            "amounts": [
+              "banking.open_savings",
+              "banking.transfer",
+              "ecommerce.search",
+              "ewallet.pay_qr",
+              "ewallet.topup_mobile",
+              "ewallet.transfer",
+              "public_transit.topup_card",
+              "stocks.place_order",
+              "stocks.set_price_alert"
+            ],
+            "addresses": [
+              "calendar.create_event",
+              "calendar.update_event",
+              "ecommerce.checkout",
+              "flights.search",
+              "food_delivery.place_order",
+              "grocery.checkout",
+              "maps.get_route",
+              "public_transit.find_routes",
+              "ride_hailing.book",
+              "ride_hailing.get_quotes",
+              "train_bus_tickets.search",
+              "weather.get_current",
+              "weather.get_forecast"
+            ],
+            "times": [
+              "alarm.create",
+              "alarm.update",
+              "calendar.cancel_event",
+              "calendar.create_event",
+              "calendar.list_events",
+              "calendar.update_event",
+              "flights.search",
+              "grocery.checkout",
+              "habit_tracker.log",
+              "parking.reserve",
+              "reminders.create",
+              "reminders.list",
+              "ride_hailing.book",
+              "sys.ask_missing_info",
+              "tasks.add",
+              "train_bus_tickets.search",
+              "tv.guide",
+              "weather.get_forecast"
+            ],
+            "device_names": [
+              "music.play",
+              "smart_home.climate_set",
+              "smart_home.fan_set",
+              "smart_home.get_status",
+              "smart_home.light_set",
+              "smart_home.switch_set"
+            ]
+          }
+        }
+      }
+    },
+    "errors": [],
+    "generalization": {
+      "public_only_tools": [
+        "ecommerce.add_to_cart",
+        "ecommerce.cancel_order",
+        "ecommerce.checkout",
+        "ecommerce.order_status",
+        "ecommerce.request_return",
+        "ecommerce.search",
+        "event_tickets.book",
+        "event_tickets.search",
+        "grocery.add_to_cart",
+        "grocery.checkout",
+        "grocery.search",
+        "habit_tracker.list_habits",
+        "habit_tracker.log",
+        "pantry.consume",
+        "pantry.list_items",
+        "parking.end_session",
+        "parking.find",
+        "parking.list_sessions",
+        "parking.reserve",
+        "public_transit.find_routes",
+        "public_transit.next_departures",
+        "public_transit.topup_card",
+        "recipes.get",
+        "recipes.save",
+        "recipes.search",
+        "stocks.get_portfolio",
+        "stocks.get_quote",
+        "stocks.place_order",
+        "stocks.set_price_alert",
+        "train_bus_tickets.book",
+        "train_bus_tickets.cancel",
+        "train_bus_tickets.my_bookings",
+        "train_bus_tickets.search",
+        "translator.translate"
+      ],
+      "public_only_apps": [
+        "ecommerce",
+        "event_tickets",
+        "grocery",
+        "habit_tracker",
+        "pantry",
+        "parking",
+        "public_transit",
+        "recipes",
+        "stocks",
+        "train_bus_tickets",
+        "translator"
+      ],
+      "shared_tools_changed_definition": []
+    }
+  }
+]

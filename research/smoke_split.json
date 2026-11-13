@@ -1,0 +1,1059 @@
+{
+  "source_split": "train",
+  "seed": 20261112,
+  "requested_fraction": 0.12944983818770225,
+  "strategy": "duplicate audio/transcript union groups + deterministic greedy joint stratification v1 (primary action app, cross-app, call bucket, clarification)",
+  "sample_count": 309,
+  "group_count": 308,
+  "train_ids": [
+    "train_0017",
+    "train_0025",
+    "train_0026",
+    "train_0028",
+    "train_0030",
+    "train_0035",
+    "train_0038",
+    "train_0046",
+    "train_0047",
+    "train_0049",
+    "train_0050",
+    "train_0057",
+    "train_0060",
+    "train_0061",
+    "train_0062",
+    "train_0066",
+    "train_0068",
+    "train_0070",
+    "train_0072",
+    "train_0081",
+    "train_0091",
+    "train_0093",
+    "train_0106",
+    "train_0108",
+    "train_0113",
+    "train_0128",
+    "train_0133",
+    "train_0139",
+    "train_0151",
+    "train_0156",
+    "train_0159",
+    "train_0161",
+    "train_0171",
+    "train_0174",
+    "train_0181",
+    "train_0189",
+    "train_0190",
+    "train_0191",
+    "train_0195",
+    "train_0200",
+    "train_0201",
+    "train_0211",
+    "train_0222",
+    "train_0225",
+    "train_0227",
+    "train_0242",
+    "train_0247",
+    "train_0254",
+    "train_0256",
+    "train_0265",
+    "train_0271",
+    "train_0273",
+    "train_0288",
+    "train_0293",
+    "train_0297",
+    "train_0301",
+    "train_0306",
+    "train_0308",
+    "train_0313",
+    "train_0332",
+    "train_0345",
+    "train_0351",
+    "train_0366",
+    "train_0371",
+    "train_0377",
+    "train_0379",
+    "train_0382",
+    "train_0388",
+    "train_0394",
+    "train_0398",
+    "train_0401",
+    "train_0402",
+    "train_0403",
+    "train_0404",
+    "train_0408",
+    "train_0416",
+    "train_0417",
+    "train_0418",
+    "train_0426",
+    "train_0428",
+    "train_0433",
+    "train_0437",
+    "train_0445",
+    "train_0455",
+    "train_0456",
+    "train_0459",
+    "train_0461",
+    "train_0468",
+    "train_0477",
+    "train_0482",
+    "train_0483",
+    "train_0514",
+    "train_0535",
+    "train_0548",
+    "train_0562",
+    "train_0575",
+    "train_0581",
+    "train_0598",
+    "train_0599",
+    "train_0608",
+    "train_0613",
+    "train_0627",
+    "train_0630",
+    "train_0636",
+    "train_0643",
+    "train_0655",
+    "train_0660",
+    "train_0669",
+    "train_0671",
+    "train_0681",
+    "train_0690",
+    "train_0691",
+    "train_0699",
+    "train_0700",
+    "train_0701",
+    "train_0704",
+    "train_0706",
+    "train_0710",
+    "train_0716",
+    "train_0720",
+    "train_0721",
+    "train_0735",
+    "train_0740",
+    "train_0755",
+    "train_0760",
+    "train_0761",
+    "train_0771",
+    "train_0773",
+    "train_0782",
+    "train_0786",
+    "train_0794",
+    "train_0798",
+    "train_0801",
+    "train_0809",
+    "train_0812",
+    "train_0821",
+    "train_0822",
+    "train_0828",
+    "train_0831",
+    "train_0833",
+    "train_0841",
+    "train_0848",
+    "train_0852",
+    "train_0865",
+    "train_0866",
+    "train_0873",
+    "train_0887",
+    "train_0890",
+    "train_0891",
+    "train_0894",
+    "train_0897",
+    "train_0907",
+    "train_0929",
+    "train_0933",
+    "train_0942",
+    "train_0952",
+    "train_0953",
+    "train_0969",
+    "train_0973",
+    "train_0977",
+    "train_0986",
+    "train_0992",
+    "train_0996",
+    "train_1002",
+    "train_1006",
+    "train_1009",
+    "train_1020",
+    "train_1024",
+    "train_1026",
+    "train_1029",
+    "train_1030",
+    "train_1032",
+    "train_1039",
+    "train_1052",
+    "train_1053",
+    "train_1061",
+    "train_1076",
+    "train_1079",
+    "train_1082",
+    "train_1084",
+    "train_1090",
+    "train_1098",
+    "train_1099",
+    "train_1104",
+    "train_1118",
+    "train_1124",
+    "train_1138",
+    "train_1139",
+    "train_1163",
+    "train_1175",
+    "train_1188",
+    "train_1194",
+    "train_1209",
+    "train_1215",
+    "train_1217",
+    "train_1219",
+    "train_1227",
+    "train_1228",
+    "train_1242",
+    "train_1257",
+    "train_1259",
+    "train_1261",
+    "train_1264",
+    "train_1318",
+    "train_1322",
+    "train_1327",
+    "train_1334",
+    "train_1343",
+    "train_1355",
+    "train_1365",
+    "train_1374",
+    "train_1382",
+    "train_1385",
+    "train_1387",
+    "train_1396",
+    "train_1406",
+    "train_1411",
+    "train_1418",
+    "train_1428",
+    "train_1429",
+    "train_1432",
+    "train_1433",
+    "train_1451",
+    "train_1460",
+    "train_1469",
+    "train_1477",
+    "train_1480",
+    "train_1482",
+    "train_1487",
+    "train_1490",
+    "train_1494",
+    "train_1499",
+    "train_1506",
+    "train_1509",
+    "train_1518",
+    "train_1520",
+    "train_1524",
+    "train_1528",
+    "train_1547",
+    "train_1549",
+    "train_1558",
+    "train_1562",
+    "train_1575",
+    "train_1580",
+    "train_1584",
+    "train_1587",
+    "train_1592",
+    "train_1604",
+    "train_1607",
+    "train_1608",
+    "train_1609",
+    "train_1617",
+    "train_1623",
+    "train_1629",
+    "train_1630",
+    "train_1651",
+    "train_1653",
+    "train_1660",
+    "train_1673",
+    "train_1679",
+    "train_1694",
+    "train_1695",
+    "train_1696",
+    "train_1716",
+    "train_1717",
+    "train_1720",
+    "train_1730",
+    "train_1739",
+    "train_1751"
+  ],
+  "validation_ids": [
+    "train_0045",
+    "train_0086",
+    "train_0087",
+    "train_0088",
+    "train_0131",
+    "train_0169",
+    "train_0177",
+    "train_0188",
+    "train_0229",
+    "train_0246",
+    "train_0280",
+    "train_0286",
+    "train_0350",
+    "train_0373",
+    "train_0413",
+    "train_0432",
+    "train_0450",
+    "train_0578",
+    "train_0583",
+    "train_0611",
+    "train_0665",
+    "train_0675",
+    "train_0695",
+    "train_0707",
+    "train_0781",
+    "train_0937",
+    "train_1012",
+    "train_1015",
+    "train_1041",
+    "train_1095",
+    "train_1161",
+    "train_1202",
+    "train_1296",
+    "train_1360",
+    "train_1369",
+    "train_1493",
+    "train_1582",
+    "train_1598",
+    "train_1645",
+    "train_1655"
+  ],
+  "train_count": 269,
+  "validation_count": 40,
+  "strata": {
+    "[\"alarm\", \"cross_app\", \"multi\", \"missing\"]": {
+      "total": 7,
+      "validation": 2,
+      "train": 5
+    },
+    "[\"alarm\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 9,
+      "validation": 2,
+      "train": 7
+    },
+    "[\"alarm\", \"one_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"alarm\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"appliances\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 4,
+      "validation": 1,
+      "train": 3
+    },
+    "[\"appliances\", \"one_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"appliances\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"banking\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 12,
+      "validation": 3,
+      "train": 9
+    },
+    "[\"banking\", \"one_app\", \"multi\", \"normal\"]": {
+      "total": 2,
+      "validation": 0,
+      "train": 2
+    },
+    "[\"banking\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"bike_rental\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 3,
+      "validation": 1,
+      "train": 2
+    },
+    "[\"bike_rental\", \"one_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"bike_rental\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"bill_payment\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 10,
+      "validation": 2,
+      "train": 8
+    },
+    "[\"bill_payment\", \"one_app\", \"multi\", \"normal\"]": {
+      "total": 6,
+      "validation": 1,
+      "train": 5
+    },
+    "[\"bill_payment\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 2,
+      "validation": 0,
+      "train": 2
+    },
+    "[\"calculator\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 2,
+      "validation": 0,
+      "train": 2
+    },
+    "[\"calculator\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"calendar\", \"cross_app\", \"multi\", \"missing\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"calendar\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 19,
+      "validation": 4,
+      "train": 15
+    },
+    "[\"calendar\", \"one_app\", \"multi\", \"normal\"]": {
+      "total": 2,
+      "validation": 0,
+      "train": 2
+    },
+    "[\"calendar\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 3,
+      "validation": 1,
+      "train": 2
+    },
+    "[\"chat_ott\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 14,
+      "validation": 3,
+      "train": 11
+    },
+    "[\"chat_ott\", \"one_app\", \"multi\", \"missing\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"chat_ott\", \"one_app\", \"multi\", \"normal\"]": {
+      "total": 4,
+      "validation": 1,
+      "train": 3
+    },
+    "[\"chat_ott\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"contacts\", \"cross_app\", \"multi\", \"missing\"]": {
+      "total": 6,
+      "validation": 1,
+      "train": 5
+    },
+    "[\"contacts\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 11,
+      "validation": 2,
+      "train": 9
+    },
+    "[\"contacts\", \"one_app\", \"multi\", \"missing\"]": {
+      "total": 4,
+      "validation": 1,
+      "train": 3
+    },
+    "[\"contacts\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"door_lock\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 2,
+      "validation": 0,
+      "train": 2
+    },
+    "[\"door_lock\", \"one_app\", \"multi\", \"normal\"]": {
+      "total": 2,
+      "validation": 0,
+      "train": 2
+    },
+    "[\"door_lock\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"email\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 3,
+      "validation": 1,
+      "train": 2
+    },
+    "[\"email\", \"one_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"email\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 2,
+      "validation": 0,
+      "train": 2
+    },
+    "[\"ewallet\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 2,
+      "validation": 0,
+      "train": 2
+    },
+    "[\"ewallet\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 2,
+      "validation": 0,
+      "train": 2
+    },
+    "[\"exchange_rate\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"exchange_rate\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"fitness\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 3,
+      "validation": 1,
+      "train": 2
+    },
+    "[\"fitness\", \"one_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"fitness\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 2,
+      "validation": 0,
+      "train": 2
+    },
+    "[\"flights\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"flights\", \"one_app\", \"multi\", \"normal\"]": {
+      "total": 2,
+      "validation": 0,
+      "train": 2
+    },
+    "[\"flights\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 2,
+      "validation": 0,
+      "train": 2
+    },
+    "[\"food_delivery\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"food_delivery\", \"one_app\", \"multi\", \"missing\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"food_delivery\", \"one_app\", \"multi\", \"normal\"]": {
+      "total": 2,
+      "validation": 0,
+      "train": 2
+    },
+    "[\"food_delivery\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"fuel_price\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"fuel_price\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"gold_price\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 2,
+      "validation": 0,
+      "train": 2
+    },
+    "[\"gold_price\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"home_automation\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 5,
+      "validation": 1,
+      "train": 4
+    },
+    "[\"home_automation\", \"one_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"home_automation\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"home_energy\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"home_energy\", \"one_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"home_energy\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 2,
+      "validation": 0,
+      "train": 2
+    },
+    "[\"home_security\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"home_security\", \"one_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"home_security\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"household_chores\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"household_chores\", \"one_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"household_chores\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"learning\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 2,
+      "validation": 0,
+      "train": 2
+    },
+    "[\"learning\", \"one_app\", \"multi\", \"missing\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"learning\", \"one_app\", \"multi\", \"normal\"]": {
+      "total": 2,
+      "validation": 0,
+      "train": 2
+    },
+    "[\"learning\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 2,
+      "validation": 0,
+      "train": 2
+    },
+    "[\"library\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"library\", \"one_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"library\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"lottery\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 2,
+      "validation": 0,
+      "train": 2
+    },
+    "[\"loyalty\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"loyalty\", \"one_app\", \"multi\", \"normal\"]": {
+      "total": 2,
+      "validation": 0,
+      "train": 2
+    },
+    "[\"loyalty\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"maps\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 2,
+      "validation": 0,
+      "train": 2
+    },
+    "[\"maps\", \"one_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"maps\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"medication\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"medication\", \"one_app\", \"multi\", \"normal\"]": {
+      "total": 2,
+      "validation": 0,
+      "train": 2
+    },
+    "[\"medication\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"music\", \"one_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"music\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 2,
+      "validation": 0,
+      "train": 2
+    },
+    "[\"news\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"news\", \"one_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"news\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"none\", \"one_app\", \"empty\", \"normal\"]": {
+      "total": 22,
+      "validation": 5,
+      "train": 17
+    },
+    "[\"none\", \"one_app\", \"single\", \"missing\"]": {
+      "total": 12,
+      "validation": 3,
+      "train": 9
+    },
+    "[\"notes\", \"cross_app\", \"multi\", \"missing\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"notes\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"notes\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 2,
+      "validation": 0,
+      "train": 2
+    },
+    "[\"package_tracking\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"package_tracking\", \"one_app\", \"multi\", \"missing\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"package_tracking\", \"one_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"package_tracking\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 2,
+      "validation": 0,
+      "train": 2
+    },
+    "[\"phone\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"phone\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 2,
+      "validation": 0,
+      "train": 2
+    },
+    "[\"podcast_radio\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"podcast_radio\", \"one_app\", \"multi\", \"missing\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"podcast_radio\", \"one_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"podcast_radio\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"reminders\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 2,
+      "validation": 0,
+      "train": 2
+    },
+    "[\"reminders\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 5,
+      "validation": 1,
+      "train": 4
+    },
+    "[\"ride_hailing\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"ride_hailing\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"robot_vacuum\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"robot_vacuum\", \"one_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"robot_vacuum\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 2,
+      "validation": 0,
+      "train": 2
+    },
+    "[\"shopping_list\", \"one_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"shopping_list\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"smart_home\", \"cross_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"smart_home\", \"one_app\", \"multi\", \"missing\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"smart_home\", \"one_app\", \"multi\", \"normal\"]": {
+      "total": 11,
+      "validation": 2,
+      "train": 9
+    },
+    "[\"smart_home\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 2,
+      "validation": 0,
+      "train": 2
+    },
+    "[\"sms\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"subscriptions\", \"one_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"subscriptions\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"tasks\", \"one_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"tasks\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 2,
+      "validation": 0,
+      "train": 2
+    },
+    "[\"tv\", \"one_app\", \"multi\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"tv\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"video_meeting\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 1,
+      "validation": 0,
+      "train": 1
+    },
+    "[\"weather\", \"one_app\", \"single\", \"normal\"]": {
+      "total": 3,
+      "validation": 1,
+      "train": 2
+    }
+  },
+  "uncovered_validation_strata": [
+    "[\"alarm\", \"one_app\", \"multi\", \"normal\"]",
+    "[\"alarm\", \"one_app\", \"single\", \"normal\"]",
+    "[\"appliances\", \"one_app\", \"multi\", \"normal\"]",
+    "[\"appliances\", \"one_app\", \"single\", \"normal\"]",
+    "[\"banking\", \"one_app\", \"multi\", \"normal\"]",
+    "[\"banking\", \"one_app\", \"single\", \"normal\"]",
+    "[\"bike_rental\", \"one_app\", \"multi\", \"normal\"]",
+    "[\"bike_rental\", \"one_app\", \"single\", \"normal\"]",
+    "[\"bill_payment\", \"one_app\", \"single\", \"normal\"]",
+    "[\"calculator\", \"cross_app\", \"multi\", \"normal\"]",
+    "[\"calculator\", \"one_app\", \"single\", \"normal\"]",
+    "[\"calendar\", \"cross_app\", \"multi\", \"missing\"]",
+    "[\"calendar\", \"one_app\", \"multi\", \"normal\"]",
+    "[\"chat_ott\", \"one_app\", \"multi\", \"missing\"]",
+    "[\"chat_ott\", \"one_app\", \"single\", \"normal\"]",
+    "[\"contacts\", \"one_app\", \"single\", \"normal\"]",
+    "[\"door_lock\", \"cross_app\", \"multi\", \"normal\"]",
+    "[\"door_lock\", \"one_app\", \"multi\", \"normal\"]",
+    "[\"door_lock\", \"one_app\", \"single\", \"normal\"]",
+    "[\"email\", \"one_app\", \"multi\", \"normal\"]",
+    "[\"email\", \"one_app\", \"single\", \"normal\"]",
+    "[\"ewallet\", \"cross_app\", \"multi\", \"normal\"]",
+    "[\"ewallet\", \"one_app\", \"single\", \"normal\"]",
+    "[\"exchange_rate\", \"cross_app\", \"multi\", \"normal\"]",
+    "[\"exchange_rate\", \"one_app\", \"single\", \"normal\"]",
+    "[\"fitness\", \"one_app\", \"multi\", \"normal\"]",
+    "[\"fitness\", \"one_app\", \"single\", \"normal\"]",
+    "[\"flights\", \"cross_app\", \"multi\", \"normal\"]",
+    "[\"flights\", \"one_app\", \"multi\", \"normal\"]",
+    "[\"flights\", \"one_app\", \"single\", \"normal\"]",
+    "[\"food_delivery\", \"cross_app\", \"multi\", \"normal\"]",
+    "[\"food_delivery\", \"one_app\", \"multi\", \"missing\"]",
+    "[\"food_delivery\", \"one_app\", \"multi\", \"normal\"]",
+    "[\"food_delivery\", \"one_app\", \"single\", \"normal\"]",
+    "[\"fuel_price\", \"cross_app\", \"multi\", \"normal\"]",
+    "[\"fuel_price\", \"one_app\", \"single\", \"normal\"]",
+    "[\"gold_price\", \"cross_app\", \"multi\", \"normal\"]",
+    "[\"gold_price\", \"one_app\", \"single\", \"normal\"]",
+    "[\"home_automation\", \"one_app\", \"multi\", \"normal\"]",
+    "[\"home_automation\", \"one_app\", \"single\", \"normal\"]",
+    "[\"home_energy\", \"cross_app\", \"multi\", \"normal\"]",
+    "[\"home_energy\", \"one_app\", \"multi\", \"normal\"]",
+    "[\"home_energy\", \"one_app\", \"single\", \"normal\"]",
+    "[\"home_security\", \"cross_app\", \"multi\", \"normal\"]",
+    "[\"home_security\", \"one_app\", \"multi\", \"normal\"]",
+    "[\"home_security\", \"one_app\", \"single\", \"normal\"]",
+    "[\"household_chores\", \"cross_app\", \"multi\", \"normal\"]",
+    "[\"household_chores\", \"one_app\", \"multi\", \"normal\"]",
+    "[\"household_chores\", \"one_app\", \"single\", \"normal\"]",
+    "[\"learning\", \"cross_app\", \"multi\", \"normal\"]",
+    "[\"learning\", \"one_app\", \"multi\", \"missing\"]",
+    "[\"learning\", \"one_app\", \"multi\", \"normal\"]",
+    "[\"learning\", \"one_app\", \"single\", \"normal\"]",
+    "[\"library\", \"cross_app\", \"multi\", \"normal\"]",
+    "[\"library\", \"one_app\", \"multi\", \"normal\"]",
+    "[\"library\", \"one_app\", \"single\", \"normal\"]",
+    "[\"lottery\", \"cross_app\", \"multi\", \"normal\"]",
+    "[\"loyalty\", \"cross_app\", \"multi\", \"normal\"]",
+    "[\"loyalty\", \"one_app\", \"multi\", \"normal\"]",
+    "[\"loyalty\", \"one_app\", \"single\", \"normal\"]",
+    "[\"maps\", \"cross_app\", \"multi\", \"normal\"]",
+    "[\"maps\", \"one_app\", \"multi\", \"normal\"]",
+    "[\"maps\", \"one_app\", \"single\", \"normal\"]",
+    "[\"medication\", \"cross_app\", \"multi\", \"normal\"]",
+    "[\"medication\", \"one_app\", \"multi\", \"normal\"]",
+    "[\"medication\", \"one_app\", \"single\", \"normal\"]",
+    "[\"music\", \"one_app\", \"multi\", \"normal\"]",
+    "[\"music\", \"one_app\", \"single\", \"normal\"]",
+    "[\"news\", \"cross_app\", \"multi\", \"normal\"]",
+    "[\"news\", \"one_app\", \"multi\", \"normal\"]",
+    "[\"news\", \"one_app\", \"single\", \"normal\"]",
+    "[\"notes\", \"cross_app\", \"multi\", \"missing\"]",
+    "[\"notes\", \"cross_app\", \"multi\", \"normal\"]",
+    "[\"notes\", \"one_app\", \"single\", \"normal\"]",
+    "[\"package_tracking\", \"cross_app\", \"multi\", \"normal\"]",
+    "[\"package_tracking\", \"one_app\", \"multi\", \"missing\"]",
+    "[\"package_tracking\", \"one_app\", \"multi\", \"normal\"]",
+    "[\"package_tracking\", \"one_app\", \"single\", \"normal\"]",
+    "[\"phone\", \"cross_app\", \"multi\", \"normal\"]",
+    "[\"phone\", \"one_app\", \"single\", \"normal\"]",
+    "[\"podcast_radio\", \"cross_app\", \"multi\", \"normal\"]",
+    "[\"podcast_radio\", \"one_app\", \"multi\", \"missing\"]",
+    "[\"podcast_radio\", \"one_app\", \"multi\", \"normal\"]",
+    "[\"podcast_radio\", \"one_app\", \"single\", \"normal\"]",
+    "[\"reminders\", \"cross_app\", \"multi\", \"normal\"]",
+    "[\"ride_hailing\", \"cross_app\", \"multi\", \"normal\"]",
+    "[\"ride_hailing\", \"one_app\", \"single\", \"normal\"]",
+    "[\"robot_vacuum\", \"cross_app\", \"multi\", \"normal\"]",
+    "[\"robot_vacuum\", \"one_app\", \"multi\", \"normal\"]",
+    "[\"robot_vacuum\", \"one_app\", \"single\", \"normal\"]",
+    "[\"shopping_list\", \"one_app\", \"multi\", \"normal\"]",
+    "[\"shopping_list\", \"one_app\", \"single\", \"normal\"]",
+    "[\"smart_home\", \"cross_app\", \"multi\", \"normal\"]",
+    "[\"smart_home\", \"one_app\", \"multi\", \"missing\"]",
+    "[\"smart_home\", \"one_app\", \"single\", \"normal\"]",
+    "[\"sms\", \"one_app\", \"single\", \"normal\"]",
+    "[\"subscriptions\", \"one_app\", \"multi\", \"normal\"]",
+    "[\"subscriptions\", \"one_app\", \"single\", \"normal\"]",
+    "[\"tasks\", \"one_app\", \"multi\", \"normal\"]",
+    "[\"tasks\", \"one_app\", \"single\", \"normal\"]",
+    "[\"tv\", \"one_app\", \"multi\", \"normal\"]",
+    "[\"tv\", \"one_app\", \"single\", \"normal\"]",
+    "[\"video_meeting\", \"one_app\", \"single\", \"normal\"]"
+  ],
+  "uncovered_training_strata": [],
+  "warning": "Approximate stratification; no guarantee for small strata. Never select few-shot examples from validation IDs or duplicate groups.",
+  "purpose": "stratified 40-sample smoke subset of held-out validation; not training",
+  "parent_manifest": "research/validation_split.json"
+}

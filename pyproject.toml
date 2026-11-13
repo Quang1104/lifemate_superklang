@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lifemate-baseline"
+version = "0.1.0"
+description = "Offline LifeMate agent scaffold"
+requires-python = ">=3.11"
+dependencies = ["jsonschema>=4.22,<5"]
+
+[project.optional-dependencies]
+model = ["torch>=2", "transformers>=4.40,<5"]
+test = ["pytest>=8,<10"]
+
+[tool.setuptools.packages.find]
+include = ["src.agent*", "src.tooling*", "src.inference*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "tests_audit"]
