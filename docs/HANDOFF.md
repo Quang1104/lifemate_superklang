@@ -44,7 +44,7 @@ Tests: mỗi làn thêm test vào file `tests/test_<làn>_*.py` riêng để tr�
 
 ## Quy tắc bàn giao
 
-1. Làm trên nhánh của làn mình, commit nhỏ, message rõ. Không push lên `main`. Không force-push.
+1. Làm trên nhánh của làn mình, commit nhỏ, message rõ. Không push lên `main`. Không force-push. **Không thêm dòng `Co-Authored-By` hay ghi công AI** vào commit hoặc PR; tác giả duy nhất là chủ repo.
 2. Trước khi dừng: cập nhật dòng của việc mình trong bảng (trạng thái, commit, lệnh test đã chạy, bước tiếp theo) và mục **Nhật ký** bên dưới.
 3. Kết quả chưa đo ghi `NOT MEASURED`. Không bịa số.
 4. Dữ liệu: dùng đường dẫn tuyệt đối tới kit, ví dụ `C:/Users/ADMIN/OneDrive - VNU-HCMUS/Documents/XuanQuang/datalife/train+public_test`. Không đọc thư mục `*_environment` hay `state.json`.
