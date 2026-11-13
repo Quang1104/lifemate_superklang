@@ -13,7 +13,8 @@ File này là nguồn sự thật chung. **Đọc trước khi làm, cập nhậ
 |---|---|---|
 | 13/11 | smoke40, Qwen3.5-4B + PhoWhisper-medium, T4, x1 | direct 10.0; compiled 0.0 (35/40 planner_timeout); sàn no-op 12.5 |
 | 13/11 | đo tốc độ Qwen3.5-4B trên T4 | ~14 tok/s (thiếu kernel linear-attention); prefill 7.9k token ≈ 6 s |
-| 13/11 | smoke40, Qwen3-4B-Instruct-2507, T4, TIME_SCALE=3 | **đang chạy** → `outputs/colab/fallback_planner/smoke40_x3/` trên Colab |
+| 13/11 | smoke40, Qwen3-4B-Instruct-2507, T4, TIME_SCALE=3 | direct 5.8 (state_mismatch 52.5, missing 22.5, unexpected 7.5; 0 timeout); compiled 7.5 (**invalid_plan 67.5**, 27/40); compiled + transcript gốc 2.5 (invalid_plan 92.5) |
+| 13/11 | chẩn đoán 8 mẫu compiled (transcript gốc) | lỗi chính `InvalidPlan: Expected a bounded typed argument source`: model ghi giá trị thô (`"time":"2026-11-23T06:00:00+07:00"`, `"query":"Minh"`) và bịa ID (`"contact_id":"contact_123"`) thay vì SOURCE DSL |
 
 Prompt planner hiện tại: median ~15k ký tự (~8k token) mỗi mẫu, phần lớn là schema tool.
 
@@ -34,10 +35,11 @@ Tests: mỗi làn thêm test vào file `tests/test_<làn>_*.py` riêng để tr�
 | 1 | Prefix KV-cache cho phần system+tools dùng lại giữa các lượt gọi trong một mẫu | Codex | done (Claude áp dụng patch) | Patch tạm: LocalPlanner(reuse_prefix_cache=True), LCP/crop, full-context cap, deadline/lock, shape/device/dtype guards; cache recurrent/sliding fallback. Fake tests passed; real CPU Qwen NOT MEASURED (thiếu torch/transformers). Chưa áp dụng/commit: worktree từ chối ghi. |
 | 2 | Render schema tool gọn (chữ ký kiểu `app.tool(arg: type, …)`) và đo số token trước/sau | Codex | done (Claude áp dụng patch) | API src.agent.schema_text.render_tools(tools); DIRECT dùng tools/context/history/user_request trước observations. Smoke40 payload: 660,976 → 524,779 ký tự (−20.605%); median 16,489.5 → 13,259.5. Qwen tokens NOT MEASURED (không tokenizer offline). CLI đo kèm patch; Claude có thể dùng renderer cho compiled sau khi áp dụng. |
 | 3 | Bộ chuyển gold tool_calls TRAIN → kế hoạch DSL compiled, đo tỷ lệ chuyển được | Claude | done `410dcc6` | `python -B -m scripts.gold_to_plan --data-root <kit>` → `outputs/gold_plans.jsonl` (+ `.report.json`), 38 s. 1236 ID (ngoài 309): chuyển trọn 530 (42.88%), xác minh khớp calls+hash 530/530 chuyển được (42.88% tổng; 441 mẫu có call). Lý do theo số đối số: text không nguyên văn 405, x-ref có trong kết quả nhưng không có where đơn trị bám câu nói 273, x-ref chỉ nằm trong list của history 226, datetime không span/field 102, text khác hoa-thường 98, int 61. Hạn chế: kế hoạch chỉ chứa nhánh gold đã chạy (không sinh `when`). Tiếp: #4 dùng 530 plan làm few-shot; cân nhắc mở DSL cho `history`+where (226) và where mờ/lồng (273) |
-| 4 | Few-shot động: lấy k mẫu TRAIN giống nhất (chỉ 1236 ID train, **không** 309 validation) đưa vào prompt | Claude | todo | cần #3 cho nhánh compiled |
+| 4 | Few-shot động: lấy k mẫu TRAIN giống nhất (chỉ 1236 ID train, **không** 309 validation) đưa vào prompt | Claude | đang làm | dùng 530 plan đã xác minh từ #3 |
+| 4b | Chấp nhận giá trị thô có căn cứ (nguyên văn, span chuyển được, context, enum, kết quả đã thấy); ID bịa → repair với kết quả thật | Claude | đang làm | sửa lỗi chính của smoke40_x3 |
 | 5 | Split leave-app-out để đo tổng quát hóa sang app chưa thấy | Claude | done `410dcc6` | `python -B -m research.leave_app_out_split --input <kit>/train/train.jsonl --catalog <kit>/train/train_tools_catalog.json` → `research/leave_app_out_split.json`: giữ ra 6 app (calculator, exchange_rate, household_chores, library, news, package_tracking; 14 tool), 171 ID holdout, 1065 ID pool; mẫu có call (gold, history hoặc ask_missing_info) tới app giữ ra đều vào holdout. Tiếp: few-shot #4 chỉ lấy từ `train_ids` của file này khi đo trên holdout |
-| 6 | Phân tích lỗi smoke40_x3, xếp hạng nhóm mất điểm | root | chờ Colab | quyết định ưu tiên tiếp theo |
-| 7 | Constrained decoding JSON (chỉ tên tool đã cài, enum) | Codex | sau #1–2 | |
+| 6 | Phân tích lỗi smoke40_x3, xếp hạng nhóm mất điểm | root | done | xem Trạng thái đo được; ưu tiên #4b, #4, #7 |
+| 7 | Constrained decoding theo JSON schema của DSL (tên tool đã cài, SOURCE hợp lệ, enum) | Codex | đang làm | ép model không ghi giá trị thô sai định dạng |
 | 8 | ASR: gợi ý tên riêng từ context vào prompt Whisper | Codex | sau #6 | chỉ làm nếu #6 cho thấy ASR mất nhiều điểm |
 | 9 | QLoRA trên 1236 ID với nhãn DSL từ #3 | Claude | quyết sau #6 | chỉ khi planner là nguồn mất điểm chính và còn thời gian |
 | 10 | Đo đúng 30 s (TIME_SCALE=1), chạy locked269 một lần, build và chạy thử Docker offline | root | 15/11 | |
