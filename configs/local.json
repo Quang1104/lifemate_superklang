@@ -1,0 +1,10 @@
+{
+  "data_root": "../datalife/train+public_test",
+  "split": "train",
+  "seed": 20261112,
+  "validation_manifest": "research/validation_split.json",
+  "smoke_manifest": "research/smoke_split.json",
+  "planner_weights": null,
+  "asr_weights": null,
+  "competition_score_status": "NOT MEASURED for an ASR+LLM system"
+}

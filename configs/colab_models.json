@@ -1,0 +1,14 @@
+{
+  "planner": {
+    "repo_id": "Qwen/Qwen3.5-4B",
+    "revision": "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a"
+  },
+  "fallback_planner": {
+    "repo_id": "Qwen/Qwen3-4B-Instruct-2507",
+    "revision": "cdbee75f17c01a7cc42f958dc650907174af0554"
+  },
+  "asr": {
+    "repo_id": "vinai/PhoWhisper-medium",
+    "revision": "55a7e3eb6c906de891f8f06a107754427dd3be79"
+  }
+}

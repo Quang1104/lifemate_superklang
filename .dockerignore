@@ -1,0 +1,16 @@
+**
+!pyproject.toml
+!README.md
+!src/
+!src/**
+!docker/
+!docker/Dockerfile
+!docker/predict.sh
+!docker/start_jupyter.sh
+!docker/predict_notebook.ipynb
+!configs/
+!configs/colab_models.json
+!training_code/
+!training_code/README.md
+**/__pycache__/
+**/*.pyc

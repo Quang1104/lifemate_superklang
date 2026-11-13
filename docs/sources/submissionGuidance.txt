@@ -1,0 +1,25 @@
+{"error_message": "Success", "data": {"updated_time": 1793852657, "name": "1_submissionGuidance", "id": 37, "value": "
+
+Docker Guide
+: 
+Download
+
+
+ 
+
+
+I. Public Test Round (October 26 – November 16)
+
+- Participating teams build their own solutions, run them on the organizers’ public test set, and submit result files (JSONL) via the Submission section on the Zalo AI Challenge portal. Teams are allowed up to 5 submissions per day, and the quota will be reset at the end of each day. Scores and rankings will be displayed on the public leaderboard.
+- On November 16, participating teams must submit their complete solutions, including training code, inference code, and data, in the form of a Docker package to the organizers via the “Solution Submission” form on the Zalo AI Challenge portal. Since the Docker file is usually quite large, teams should provide a checksum and a public Google Drive link so that the organizer can download it. 
+Each team is allowed up to 2 submissions. The organizer will only evaluate the last submission. Submission deadline: 23:59 (GMT+7).
+
+ 
+
+
+II. Private Test Round (November 20 – November 23) 
+
+- At 9:00 AM on November 20, the organizer will release the private test set. Participating teams will run their submitted solutions on this set and submit the result files (JSONL) via the Submission section on the Zalo AI Challenge portal, with a deadline of 23:59 (GMT+7) on November 23. The private leaderboard will be displayed in chronological order (based on submission time). 
+
+The organizer will evaluate the submitted solutions to verify results, review source code, and detect any cheating. The top 2 teams will be announced on December 2.
+"}, "error_code": 0}

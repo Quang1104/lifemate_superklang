@@ -1,0 +1,62 @@
+{"error_message": "Success", "data": {"updated_time": 1792937455, "name": "1_evaluationMetric", "id": 42, "value": "
+Each sample is scored on two things: whether the agent leaves the app data in the correct final state, and how closely its tool calls match the reference (gold) calls.
+
+ 
+
+Metrics
+
+• 
+State match:
+ the submitted 
+state_hash
+ must equal the gold 
+state_hash
+, otherwise the sample scores 0. Free-text (fuzzy) fields do not affect the hash. The 
+state_hash
+ must be computed by the 
+zaic_tools
+ environment (
+env.get_state_hash()
+) and can be reproduced by the organisers, who replay the submitted 
+tool_calls
+ in order with the matching version of 
+zaic_tools
+; if the results differ, the organisers' result is final. 
+
+• 
+Tool-call match:
+ a submitted call matches a gold call when the tool name is the same, every non-fuzzy argument is identical, and every fuzzy argument has token-F1 > 0.6 (after lowercasing and Unicode NFC). Each call can match at most one call; order is not considered.
+
+•
+ Out-of-scope samples:
+ if the gold list is empty, the sample scores 1 only when the submitted list is also empty.
+
+• 
+Missing information:
+ sys.ask_missing_info is scored like any other tool;
+
+ 
+
+Formula: 
+
+   If the gold list is empty, the sample scores 1 only when the submitted list is also empty; otherwise it scores 0.
+
+   Otherwise (the gold list is not empty):
+
+
+
+
+Where 
+P
+ and 
+R 
+are precision and recall; 
+M
+ is the number of matched calls; 
+|G|
+ is the number of gold calls; 
+U 
+is the number of unmatched submitted calls (including calls rejected with a schema error); 
+N 
+is the number of samples in the test set. 
+"}, "error_code": 0}
