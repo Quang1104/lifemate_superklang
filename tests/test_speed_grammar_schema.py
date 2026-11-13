@@ -262,3 +262,45 @@ def test_constrained_planner_passes_schema_and_falls_back_without_xgrammar(monke
     assert local._grammar_processor(None) is None
     assert local._grammar_processor(seen["schema"]) is None
     assert local.grammar_stats == Counter({"unavailable": 1})
+
+
+def test_grammar_logits_masks_with_int_tokens_and_falls_back(monkeypatch):
+    import sys
+    import types
+    from collections import Counter
+
+    torch = __import__("pytest").importorskip("torch")
+    from src.agent.local_model import _GrammarLogits
+
+    accepted, masks = [], []
+
+    class Matcher:
+        def __init__(self, compiled):
+            self.done = False
+
+        def is_terminated(self):
+            return self.done
+
+        def accept_token(self, token):
+            assert type(token) is int  # the upstream adapter bug passed a tensor here
+            accepted.append(token)
+            return token != 99
+
+        def fill_next_token_bitmask(self, bitmask):
+            masks.append(True)
+
+    def apply(scores, bitmask, *, vocab_size):
+        scores[0, 0] = -1e9
+
+    fake = types.SimpleNamespace(GrammarMatcher=Matcher, allocate_token_bitmask=lambda b, v: torch.zeros(b, 1),
+                                 apply_token_bitmask_inplace=apply)
+    monkeypatch.setitem(sys.modules, "xgrammar", fake)
+    stats = Counter()
+    processor = _GrammarLogits("compiled", 4, stats)
+    first = processor(torch.tensor([[1, 2]]), torch.zeros(1, 4))
+    assert first[0, 0] == -1e9 and accepted == []
+    processor(torch.tensor([[1, 2, 3]]), torch.zeros(1, 4))
+    assert accepted == [3]
+    untouched = processor(torch.tensor([[1, 2, 3, 99]]), torch.zeros(1, 4))  # rejected token
+    assert untouched[0, 0] == 0 and stats == Counter({"runtime_fallback": 1})
+    assert processor(torch.tensor([[1, 2, 3, 99, 5]]), torch.zeros(1, 4))[0, 0] == 0

@@ -243,6 +243,46 @@ class _PrefixCache:
             self.layout = layout
 
 
+class _GrammarLogits:
+    """Batch-1 grammar mask on xgrammar's core API.
+
+    xgrammar 0.1.34's contrib.hf processor passes a tensor to accept_token and fails on
+    the second step, so this calls the core matcher with a Python int. Any grammar fault
+    disables the mask for the rest of the call instead of failing the sample.
+    """
+
+    def __init__(self, compiled, vocab_size: int, stats: Counter):
+        import xgrammar
+
+        self._xgrammar = xgrammar
+        self._matcher = xgrammar.GrammarMatcher(compiled)
+        self._bitmask = xgrammar.allocate_token_bitmask(1, vocab_size)
+        self._vocab_size = vocab_size
+        self._stats = stats
+        self._prompt_length = None
+        self._disabled = False
+
+    def __call__(self, input_ids, scores):
+        if self._disabled:
+            return scores
+        try:
+            if self._prompt_length is None:
+                self._prompt_length = input_ids.shape[-1]
+            elif not self._matcher.is_terminated():
+                if not self._matcher.accept_token(int(input_ids[0, -1].item())):
+                    raise ValueError("Grammar rejected the generated token")
+            if self._matcher.is_terminated():
+                return scores
+            self._matcher.fill_next_token_bitmask(self._bitmask)
+            self._xgrammar.apply_token_bitmask_inplace(scores, self._bitmask.to(scores.device),
+                                                       vocab_size=self._vocab_size)
+            return scores
+        except Exception:  # Unconstrained decoding is safer than a failed sample.
+            self._disabled = True
+            self._stats["runtime_fallback"] += 1
+            return scores
+
+
 class LocalPlanner:
     """Generate next-action or compiled-plan JSON with a local Qwen checkpoint."""
 
@@ -303,10 +343,8 @@ class LocalPlanner:
             if len(self._grammars) >= 64:
                 self._grammars.clear()
             self._grammars[key] = compiled
-        import xgrammar
-
         self.grammar_stats["constrained"] += 1
-        return xgrammar.contrib.hf.LogitsProcessor(compiled)
+        return _GrammarLogits(compiled, self._config.get_text_config().vocab_size, self.grammar_stats)
 
     def __call__(self, request: PlannerInput) -> str:
         return self._generate(_DIRECT_INSTRUCTIONS, _direct_payload(request),
