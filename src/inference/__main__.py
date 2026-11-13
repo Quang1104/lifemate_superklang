@@ -106,7 +106,8 @@ def _run_official(args: argparse.Namespace) -> dict:
         if args.planner_mode == "compiled":
             from ..agent.compiled_plan import CompiledPlanner
 
-            planner_factory = CompiledPlanner(planner.generate, tool_limit=limits.max_steps - 1).for_sample
+            planner_factory = CompiledPlanner(planner.generate, tool_limit=limits.max_steps - 1,
+                                              constrain=True).for_sample
         if args.device.startswith("cuda"):
             import torch
 
@@ -136,7 +137,8 @@ def _run_official(args: argparse.Namespace) -> dict:
                "attempted": len(timing), "statuses": dict(statuses), "parameters": parameter_counts,
                "planner_artifact": str(safe_path(args.model_dir)) if args.model_dir else None,
                "asr_artifact": str(safe_path(args.asr_dir)) if args.asr_dir else None,
-               "device": args.device, "time_scale": args.time_scale, "transcript_source": (
+               "device": args.device, "time_scale": args.time_scale,
+               "grammar": dict(planner.grammar_stats) if hasattr(planner, "grammar_stats") else None, "transcript_source": (
                    "control" if args.control_noop else "train_oracle" if args.train_transcripts else "asr"),
                "model_load_ms": load_ms, "mean_sample_time_ms": mean(timing),
                "p95_sample_time_ms": timing[math.ceil(0.95 * len(timing)) - 1],

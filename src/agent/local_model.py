@@ -1,5 +1,6 @@
 """Local, deterministic text generation and Vietnamese speech recognition."""
 
+from collections import Counter
 from contextlib import contextmanager
 from dataclasses import asdict
 import json
@@ -276,15 +277,47 @@ class LocalPlanner:
             directory, config=config, dtype=dtype, attn_implementation="sdpa", use_safetensors=True, **local,
         ).to(self._device).eval()
         self._context_tokens = min(context_tokens, config.get_text_config().max_position_embeddings)
+        self._config = config
+        self._grammars: dict[str, object] = {}
+        self.grammar_stats: Counter[str] = Counter()  # constrained / unavailable / compile_failed
+
+    def _grammar_processor(self, json_schema: dict | None):
+        """Return a fresh logits processor for the schema, or None to decode unconstrained."""
+        if json_schema is None:
+            return None
+        key = json.dumps(json_schema, sort_keys=True, separators=(",", ":"))
+        compiled = self._grammars.get(key)
+        if compiled is None:
+            try:
+                import xgrammar
+            except ImportError:
+                self.grammar_stats["unavailable"] += 1
+                return None
+            try:
+                info = xgrammar.TokenizerInfo.from_huggingface(
+                    self._tokenizer, vocab_size=self._config.get_text_config().vocab_size)
+                compiled = xgrammar.GrammarCompiler(info).compile_json_schema(key)
+            except Exception:  # A grammar we cannot compile must not block planning.
+                self.grammar_stats["compile_failed"] += 1
+                return None
+            if len(self._grammars) >= 64:
+                self._grammars.clear()
+            self._grammars[key] = compiled
+        import xgrammar
+
+        self.grammar_stats["constrained"] += 1
+        return xgrammar.contrib.hf.LogitsProcessor(compiled)
 
     def __call__(self, request: PlannerInput) -> str:
         return self._generate(_DIRECT_INSTRUCTIONS, _direct_payload(request),
                               max_tokens=512, deadline=request.deadline)
 
-    def generate(self, system: str, user: str, *, deadline: float | None = None) -> str:
-        return self._generate(system, user, max_tokens=1_536, deadline=deadline)
+    def generate(self, system: str, user: str, *, deadline: float | None = None,
+                 json_schema: dict | None = None) -> str:
+        return self._generate(system, user, max_tokens=1_536, deadline=deadline, json_schema=json_schema)
 
-    def _generate(self, system: str, user: str, *, max_tokens: int, deadline: float | None) -> str:
+    def _generate(self, system: str, user: str, *, max_tokens: int, deadline: float | None,
+                  json_schema: dict | None = None) -> str:
         _check_deadline(deadline)
         # Data may contain literal Qwen role delimiters. Escaping the opening
         # character keeps them ordinary text and preserves JSON string values.
@@ -314,6 +347,11 @@ class LocalPlanner:
                 options["return_dict_in_generate"] = self._reuse_prefix_cache
                 if past is not None:
                     options["past_key_values"] = past
+                processor = self._grammar_processor(json_schema)
+                if processor is not None:
+                    from transformers import LogitsProcessorList
+
+                    options["logits_processor"] = LogitsProcessorList([processor])
                 _check_deadline(deadline)
                 # HF receives the full IDs and mask, preserving length limits and
                 # logits processors. It slices off cached IDs before model prefill.

@@ -13,6 +13,7 @@ from jsonschema import Draft202012Validator
 from ..inference.types import Sample
 from ..tooling.json_data import InvalidJSON, decode_json, encode_json
 from .plan_protocol import InvalidPlan, Source, evaluate, exact_span, matches, parse_source
+from .plan_grammar import plan_json_schema
 from .plan_values import Unresolved, normalized
 from .planner import PlannerInput
 
@@ -394,11 +395,12 @@ def _schema_for_prompt(schema: dict | bool) -> dict | bool:
 class CompiledPlanner:
     """A per-sample state machine that emits existing Planner actions."""
 
-    def __init__(self, generate: Callable[..., str], *, tool_limit: int = 7) -> None:
+    def __init__(self, generate: Callable[..., str], *, tool_limit: int = 7, constrain: bool = False) -> None:
         if type(tool_limit) is not int or not 1 <= tool_limit <= 7:
             raise ValueError("The compiled tool limit must be in [1, 7]")
         self._generate = generate
         self._limit = tool_limit
+        self._constrain = constrain  # generate() must accept json_schema= when True
         self._steps: list[Step] | None = None
         self._index = 0
         self._pending = False
@@ -408,7 +410,7 @@ class CompiledPlanner:
         self._statuses: dict[str, str] = {}
 
     def for_sample(self) -> "CompiledPlanner":
-        return CompiledPlanner(self._generate, tool_limit=self._limit)
+        return CompiledPlanner(self._generate, tool_limit=self._limit, constrain=self._constrain)
 
     def _compile_plan(self, request: PlannerInput, tools: dict[str, dict], reason: str | None = None) -> None:
         sample = request.sample
@@ -431,7 +433,8 @@ class CompiledPlanner:
             }
         if request.deadline is not None and monotonic() >= request.deadline:
             raise TimeoutError("Plan deadline elapsed")
-        raw = self._generate(_SYSTEM, _json(data), deadline=request.deadline)
+        extra = {"json_schema": plan_json_schema(request.tools, self._limit)} if self._constrain else {}
+        raw = self._generate(_SYSTEM, _json(data), deadline=request.deadline, **extra)
         self._steps = _compile(raw, request, tools, plan[:self._index], self._limit, focus=focus,
                                suffix=tuple(plan[self._index + 1:]) if focus else ())
 
