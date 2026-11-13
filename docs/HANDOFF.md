@@ -45,6 +45,14 @@ Tests: mỗi làn thêm test vào file `tests/test_<làn>_*.py` riêng để tr�
 | 9 | QLoRA trên 1236 ID với nhãn DSL từ #3 | Claude | quyết sau #6 | chỉ khi planner là nguồn mất điểm chính và còn thời gian |
 | 10 | Đo đúng 30 s (TIME_SCALE=1), chạy locked269 một lần, build và chạy thử Docker offline | root | 15/11 | |
 
+## Khi một bên hết token: bên kia tiếp quản thế nào
+
+1. `git status` và `git log --oneline -5` trên `colab-smoke` (repo chính). Code chưa commit là việc dở của bên trước: đọc diff, chạy test, rồi commit hoặc hoàn tác.
+2. Kiểm tra hai worktree làn: `git -C ../lifemate_quality log --oneline colab-smoke..claude-quality` và `git -C ../lifemate_codex log --oneline colab-smoke..codex-speed`. Commit nào chưa có trên `colab-smoke` thì xem, chạy test, rồi `git cherry-pick` vào `colab-smoke`. Patch Codex để ở `C:/Users/ADMIN/AppData/Local/Temp/lifemate-*-staging/` cũng là việc dở.
+3. Chạy `python -B -m pytest -q -p no:cacheprovider` và `python -B -m src.inference mock --samples 40` trước khi push `colab-smoke`.
+4. Làm tiếp việc có trạng thái `đang làm` hoặc `todo` ưu tiên cao nhất trong bảng việc.
+5. Đo trên GPU: chủ repo mở notebook Colab bằng tài khoản Google thứ hai (`?authuser=1` hoặc tài khoản đang đăng nhập có GPU), chạy cell 1 → 2 → 3 → smoke → tách lỗi ASR. Kết quả in ngay trong cell; chép số vào bảng **Trạng thái đo được**.
+
 ## Quy tắc bàn giao
 
 1. Làm trên nhánh của làn mình, commit nhỏ, message rõ. Không push lên `main`. Không force-push. **Không thêm dòng `Co-Authored-By` hay ghi công AI** vào commit hoặc PR; tác giả duy nhất là chủ repo.
