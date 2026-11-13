@@ -18,7 +18,7 @@ from time import monotonic
 from types import SimpleNamespace
 
 from src.agent.compiled_plan import CompiledPlanner, _blocked_write, _compile
-from src.agent.plan_protocol import InvalidPlan, exact_span, matches
+from src.agent.plan_protocol import InvalidPlan, enum_values, exact_span, leaves, matches, scalar_paths, spans
 from src.agent.plan_values import Unresolved, convert_span, shift_time
 from src.agent.planner import PlannerInput
 from src.agent.runner import Limits, run_sample
@@ -30,24 +30,11 @@ from src.tooling.registry import ToolRejected
 _CATEGORY_FIELDS = {"type", "kind", "category", "status", "state", "mode", "relation"}
 _FORMS = (("datetime", r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d[+-]\d\d:\d\d"), ("date", r"\d{4}-\d\d-\d\d"),
           ("time", r"\d\d:\d\d"))
-_MAX_SPAN_WORDS = 9
 _EDGE = ".,;:!?…\"'()“”"
 
 
 class Unexpressible(ValueError):
     """A gold argument has no plan SOURCE that reproduces it; the message is the grouped reason."""
-
-
-def spans(text: str) -> list[str]:
-    """Contiguous word spans (edge punctuation stripped) that exact_span can find again."""
-    words = text.split()
-    found = []
-    for i in range(len(words)):
-        for j in range(i + 1, min(len(words), i + _MAX_SPAN_WORDS) + 1):
-            span = " ".join(words[i:j]).strip(_EDGE)
-            if span and span not in found:
-                found.append(span)
-    return found
 
 
 def find_span(value, mode: str, text: str, context: dict) -> str | None:
@@ -71,24 +58,6 @@ def text_span(value: str, text: str) -> str | None:
         return None
 
 
-def enum_values(schema: dict) -> list:
-    values = list(schema.get("enum", []))
-    if "const" in schema:
-        values.append(schema["const"])
-    for branch in schema.get("anyOf", []) + schema.get("oneOf", []):
-        values.extend(enum_values(branch))
-    return values
-
-
-def scalar_paths(root, path=()):
-    """(dict-only path, scalar) pairs; value_at cannot index lists."""
-    if isinstance(root, dict):
-        for key, child in root.items():
-            yield from scalar_paths(child, path + (key,))
-    elif not isinstance(root, list) and path:
-        yield path, root
-
-
 def record_lists(root, path=()):
     """(dict-only path, list of dict records) pairs."""
     if isinstance(root, dict):
@@ -96,16 +65,6 @@ def record_lists(root, path=()):
             yield from record_lists(child, path + (key,))
     elif isinstance(root, list) and root and all(isinstance(item, dict) for item in root):
         yield path, root
-
-
-def leaves(root):
-    if isinstance(root, dict):
-        root = list(root.values())
-    if isinstance(root, list):
-        for child in root:
-            yield from leaves(child)
-    else:
-        yield root
 
 
 def same(first, second) -> bool:

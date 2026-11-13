@@ -12,9 +12,11 @@ from jsonschema import Draft202012Validator
 
 from ..inference.types import Sample
 from ..tooling.json_data import InvalidJSON, decode_json, encode_json
-from .plan_protocol import InvalidPlan, Source, evaluate, exact_span, matches, parse_source
+from .fewshot import Examples, default_examples, default_k
+from .plan_protocol import (Grounding, InvalidPlan, Source, evaluate, exact_span, leaves, matches, parse_source,
+                            quoted, same_value)
 from .plan_grammar import plan_json_schema
-from .plan_values import Unresolved, normalized
+from .plan_values import Unresolved, convert_span, normalized
 from .planner import PlannerInput
 
 
@@ -23,6 +25,10 @@ _STEP_ID = re.compile(r"[A-Za-z][A-Za-z0-9_-]{0,31}\Z")
 _COMPARISONS = {"lt": operator.lt, "le": operator.le, "gt": operator.gt, "ge": operator.ge,
                 "eq": matches, "ne": lambda first, second: not matches(first, second)}
 _MISSING = object()
+_CATEGORY_FIELDS = frozenset({"type", "kind", "category", "status", "state", "mode", "relation"})
+_COMMENTARY = frozenset({"reason", "note", "comment", "description", "explanation", "thought", "why"})
+_EDGE = ".,;:!?…\"'()“”"
+_MAX_NESTING = 6
 _ACTION_SCHEMA_KEYS = frozenset({
     "type", "properties", "items", "required", "enum", "const", "additionalProperties", "pattern",
     "minItems", "maxItems", "minLength", "maxLength", "minimum", "maximum", "format",
@@ -58,6 +64,10 @@ args is an object mapping parameter names to SOURCES:
   HH:MM time by a duration in minutes; dir is later or earlier. Use it for "dời muộn 1 tiếng",
   "đón trước giờ hẹn 45 phút" or "báo thức trước lịch họp 2 tiếng", with the base taken from the
   event result or context. by may also be an observed numeric field in minutes.
+A plain literal such as "Minh" or 500000 is accepted only when it is an utterance span, a context field,
+a schema enum, or a value in an observed result; free-text fields such as message bodies may be literal.
+examples, when present, show verified plans for other requests and other data: copy their structure,
+never their IDs or values.
 For each ID use known observed references, never guesses. Prefer explicit result selectors with name,
 type, room, or other provided qualifiers. Preserve requested reads. Omit unused optional arguments.
 If the user must provide missing information, add sys.ask_missing_info as the final step with tool_name
@@ -111,7 +121,7 @@ def _parse_step(raw: Any, sample: Sample, tools: dict[str, dict]) -> Step:
         raise InvalidPlan("Step must name an installed tool")
     if not isinstance(anchor, str):
         raise InvalidPlan("Step anchor must be a current utterance span")
-    anchor = exact_span(sample.user_request, anchor)
+    anchor = _anchor(sample.user_request, anchor)
     if not isinstance(arguments, dict):
         raise InvalidPlan("Step args must be an object")
     after = raw.get("after", [])
@@ -126,6 +136,181 @@ def _parse_step(raw: Any, sample: Sample, tools: dict[str, dict]) -> Step:
                               parse_source(condition["right"]))
     return Step(step_id, tool, anchor, {key: parse_source(item) for key, item in arguments.items()},
                 tuple(after), condition)
+
+
+def _anchor(text: str, anchor: str) -> str:
+    """The verbatim span, else the request window sharing most (at least half) of the anchor's words."""
+    try:
+        return exact_span(text, anchor)
+    except Unresolved:
+        pass
+    wanted = {word.strip(_EDGE) for word in normalized(anchor).split()} - {""}
+    words = text.split()
+    size = min(len(anchor.split()), len(words))
+    best, start = 0, 0
+    for index in range(len(words) - size + 1):
+        shared = len(wanted & {normalized(word).strip(_EDGE) for word in words[index:index + size]})
+        if shared > best:
+            best, start = shared, index
+    if not wanted or 2 * best < len(wanted):
+        raise Unresolved("Expected a verbatim transcript span")
+    return exact_span(text, " ".join(words[start:start + size]).strip(_EDGE))
+
+
+def _spoken_strings(step: Step, text: str) -> tuple[str, ...]:
+    """Request spans used as plain text arguments of a step; hints for picking one record."""
+    return tuple(source.value for source in step.args.values()
+                 if source.kind in {"text", "raw", "grounded"} and source.mode == "text"
+                 and isinstance(source.value, str) and source.value.strip() and quoted(text, source.value))
+
+
+def _clarification_literal(source: Source, depth: int = 0) -> Source:
+    if depth > _MAX_NESTING:
+        raise InvalidPlan("Expected a bounded typed argument source")
+    if source.kind == "raw" and isinstance(source.value, list):
+        return Source("array", [_clarification_literal(parse_source(item), depth + 1) for item in source.value])
+    if source.kind == "raw" and not isinstance(source.value, dict):
+        return Source("value", source.value)
+    return source
+
+
+class _Resolver:
+    """Turn raw literals into equivalent typed sources when grounded; ungrounded literals stay rejected.
+
+    Grounded means: a request span (verbatim text, or a span converting to the value under the field's type),
+    a context field, an enum or bool, a successful prior result, a free-text (x-match fuzzy) field, or, during
+    repair, a value in a visible result. Raw x-ref IDs never dispatch unobserved: they wait for the producing
+    read and resolve only to an ID that read returned.
+    """
+
+    def __init__(self, sample: Sample, tools: dict[str, dict], seen: dict[str, Step],
+                 results: dict[str, dict]) -> None:
+        self.sample, self.tools, self.seen, self.results = sample, tools, seen, results
+        self.grounding = Grounding(sample)
+
+    def argument(self, source: Source, schema: Any, step: Step, depth: int = 0) -> Source:
+        schema = schema if isinstance(schema, dict) else {}
+        if depth > _MAX_NESTING:
+            raise InvalidPlan("Expected a bounded typed argument source")
+        if source.kind == "value" and isinstance(source.value, (dict, list)):
+            source = Source("raw", source.value)
+        if source.kind == "raw" and isinstance(source.value, list):
+            source = Source("array", [parse_source(item) for item in source.value])
+        elif (source.kind == "raw" and isinstance(source.value, dict)
+              and (schema.get("type") == "object" or "properties" in schema)):
+            source = Source("object", {key: parse_source(item) for key, item in source.value.items()})
+        if source.kind == "object":
+            fields = schema.get("properties", {})
+            return replace(source, value={key: self.argument(item, fields.get(key, {}), step, depth + 1)
+                                          for key, item in source.value.items()})
+        if source.kind == "array":
+            return replace(source, value=[self.argument(item, schema.get("items", {}), step, depth + 1)
+                                          for item in source.value])
+        if source.kind == "raw":
+            return self.literal(source.value, schema, step)
+        if source.kind == "value" and not (type(source.value) is bool or schema.get("const", _MISSING) ==
+                                           source.value or source.value in schema.get("enum", [])):
+            return self.literal(source.value, schema, step)
+        if source.kind == "text" and not quoted(self.sample.user_request, source.value):
+            if source.mode == "text":
+                return self.literal(source.value, schema, step)
+            try:
+                return self.literal(convert_span(source.value, source.mode, self.sample.context), schema, step)
+            except Unresolved:
+                return source  # reported as a non-verbatim span
+        return self.nested(source)
+
+    def literal(self, value: Any, schema: dict, step: Step) -> Source:
+        if isinstance(value, dict):
+            raise InvalidPlan("Unrecognized typed argument source")
+        found = self.grounding.source(value, schema)
+        if found is not None:
+            return found
+        if isinstance(schema.get("x-ref"), str):
+            return self.reference(value, schema["x-ref"], step)
+        visible = [step_id for step_id, result in self.results.items()
+                   if step_id in self.seen and any(same_value(leaf, value) for leaf in leaves(result))]
+        if visible:
+            return Source("seen", (visible[-1],), raw=value)
+        raise InvalidPlan(f"Literal {str(value)[:60]!r} is not an utterance span, context field, enum or "
+                          "observed result; use a typed SOURCE")
+
+    def reference(self, value: Any, kind: str, step: Step) -> Source:
+        hints = (step.anchor, *_spoken_strings(step, self.sample.user_request))
+        for producer in reversed(list(self.seen.values())):
+            for evidence in self.tools[producer.tool].get("evidence_paths", []):
+                path = list(evidence["path"])
+                if evidence["namespace"] != kind or path.count("*") > 1:
+                    continue
+                star = path.index("*") if "*" in path else len(path)
+                return Source("ref", producer.id, tuple(path[:star]), field=tuple(path[star + 1:]), raw=value,
+                              hints=hints + _spoken_strings(producer, self.sample.user_request))
+        return Source("lookup", None, raw=value, hints=hints)  # needs a unique argument-free reader
+
+    def nested(self, source: Source) -> Source:
+        if source.where is not None:
+            source = replace(source, where={key: self.selector(item, key) for key, item in source.where.items()})
+        if source.kind == "shift":
+            source = replace(source, value=tuple(self.selector(item) for item in source.value))
+        return source
+
+    def selector(self, source: Source, field: str | None = None) -> Source:
+        """Selectors, conditions and shift parts: only static request/context/history evidence."""
+        value = source.value
+        if source.kind == "raw" and not isinstance(value, (dict, list)):
+            if type(value) is bool or field in _CATEGORY_FIELDS and isinstance(value, str):
+                return Source("value", value)
+            found = self.grounding.source(value, {}, free_text=False)
+        elif source.kind == "text" and source.mode != "text" and not quoted(self.sample.user_request, value):
+            try:
+                found = self.grounding.source(convert_span(value, source.mode, self.sample.context), {},
+                                              free_text=False)
+            except Unresolved:
+                return source
+        else:
+            return self.nested(source)
+        if found is None:
+            raise InvalidPlan("A selector or condition literal must be an utterance span or observed field")
+        return found
+
+    def condition(self, condition: "Condition | None") -> "Condition | None":
+        if condition is None:
+            return None
+        return replace(condition, left=self.selector(condition.left), right=self.selector(condition.right))
+
+
+def _plan_object(raw: str) -> Any:
+    """Decode a plan, tolerating prose or a code fence around it, a bare step list, or commentary keys."""
+    try:
+        value = decode_json(raw, max_bytes=_MAX_PLAN_BYTES)
+    except InvalidJSON:
+        starts = [index for index in (raw.find("{"), raw.find("[")) if index >= 0] if isinstance(raw, str) else []
+        end = max(raw.rfind("}"), raw.rfind("]")) if starts else -1
+        if not starts or end <= min(starts):
+            raise
+        value = decode_json(raw[min(starts):end + 1], max_bytes=_MAX_PLAN_BYTES)
+    if isinstance(value, list):
+        return {"steps": value}
+    if isinstance(value, dict) and "steps" not in value and {"tool", "args"} <= value.keys():
+        return {"steps": [value]}
+    if isinstance(value, dict) and "steps" in value and set(value) - {"steps"} <= _COMMENTARY:
+        return {"steps": value["steps"]}
+    return value
+
+
+def _step_shape(raw: Any, index: int, sample: Sample, tools: dict[str, dict]) -> Any:
+    """Fill harmless omissions: an id, empty args, "arguments" for args, a read's anchor; drop commentary."""
+    if not isinstance(raw, dict):
+        return raw
+    step = {key: value for key, value in raw.items() if key not in _COMMENTARY}
+    if "args" not in step and isinstance(step.get("arguments"), dict):
+        step["args"] = step.pop("arguments")
+    step.setdefault("args", {})
+    step.setdefault("id", f"s{index + 1}")
+    tool = tools.get(step.get("tool")) if isinstance(step.get("tool"), str) else None
+    if "anchor" not in step and tool is not None and not tool.get("writes"):
+        step["anchor"] = sample.user_request  # only writes need an anchor for the negation guard
+    return step
 
 
 def _lookup(source: Source, schema: dict, tool_map: dict[str, dict], step: Step,
@@ -161,6 +346,8 @@ def _lookup(source: Source, schema: dict, tool_map: dict[str, dict], step: Step,
     read_id = same_read.id if same_read is not None else f"_lookup_{step.id}_{len(readers) + 1}"
     if same_read is None:
         readers.append(Step(read_id, name, step.anchor, {}, step.after))
+    if source.raw is not None:  # a raw ID routed through the reader; it must be one the reader returns
+        return Source("ref", read_id, (collection,), field=(field,), raw=source.raw, hints=source.hints)
     return Source("result", read_id, (collection,), source.where, (field,))
 
 
@@ -246,8 +433,7 @@ def _ground_selectors(source: Source, sample: Sample) -> None:
         for field, value in source.where.items():
             if value.kind == "value" and not (
                 type(value.value) is bool or (
-                    isinstance(value.value, str)
-                    and field in {"type", "kind", "category", "status", "state", "mode", "relation"}
+                    isinstance(value.value, str) and field in _CATEGORY_FIELDS
                 )
             ):
                 raise InvalidPlan("Selector requires an observed field or utterance span")
@@ -296,15 +482,17 @@ def _blocked_write(step: Step, sample: Sample) -> bool:
 
 
 def _compile(raw: str, request: PlannerInput, tools: dict[str, dict], prefix: list[Step],
-             limit: int, *, focus: Step | None = None, suffix: tuple[Step, ...] = ()) -> list[Step]:
-    value = decode_json(raw, max_bytes=_MAX_PLAN_BYTES)
+             limit: int, *, focus: Step | None = None, suffix: tuple[Step, ...] = (),
+             results: dict[str, dict] | None = None) -> list[Step]:
+    value = _plan_object(raw)
     if (not isinstance(value, dict) or set(value) != {"steps"} or not isinstance(value["steps"], list)
             or len(value["steps"]) + len(prefix) + len(suffix) > limit):
         raise InvalidPlan("Expected a bounded steps array")
     steps = list(prefix)
     seen = {step.id: step for step in prefix}
+    resolver = _Resolver(request.sample, tools, seen, results or {})
     for index, raw_step in enumerate(value["steps"]):
-        step = _parse_step(raw_step, request.sample, tools)
+        step = _parse_step(_step_shape(raw_step, index, request.sample, tools), request.sample, tools)
         tool = tools[step.tool]
         fields = tool["parameters"].get("properties", {})
         if focus is not None:
@@ -319,6 +507,11 @@ def _compile(raw: str, request: PlannerInput, tools: dict[str, dict], prefix: li
             raise InvalidPlan("Step IDs must be unique")
         if tool.get("writes") and _blocked_write(step, request.sample):
             raise InvalidPlan("A negated action cannot modify application state")
+        if step.tool == "sys.ask_missing_info":
+            step = replace(step, args={key: _clarification_literal(item) for key, item in step.args.items()})
+        else:
+            step = replace(step, args={key: resolver.argument(item, fields.get(key, {}), step)
+                                       for key, item in step.args.items()}, when=resolver.condition(step.when))
         readers: list[Step] = []
         args = {key: _lookup(value, fields.get(key, {}), tools, step, readers)
                 for key, value in step.args.items()}
@@ -395,9 +588,14 @@ def _schema_for_prompt(schema: dict | bool) -> dict | bool:
 class CompiledPlanner:
     """A per-sample state machine that emits existing Planner actions."""
 
-    def __init__(self, generate: Callable[..., str], *, tool_limit: int = 7, constrain: bool = False) -> None:
+    def __init__(self, generate: Callable[..., str], *, tool_limit: int = 7, fewshot: int | None = None,
+                 examples: Examples | None = None, constrain: bool = False) -> None:
         if type(tool_limit) is not int or not 1 <= tool_limit <= 7:
             raise ValueError("The compiled tool limit must be in [1, 7]")
+        self._k = default_k() if fewshot is None else fewshot
+        if type(self._k) is not int or not 0 <= self._k <= 5:
+            raise ValueError("The few-shot example count must be in [0, 5]")
+        self._examples = default_examples() if examples is None else examples
         self._generate = generate
         self._limit = tool_limit
         self._constrain = constrain  # generate() must accept json_schema= when True
@@ -410,16 +608,23 @@ class CompiledPlanner:
         self._statuses: dict[str, str] = {}
 
     def for_sample(self) -> "CompiledPlanner":
-        return CompiledPlanner(self._generate, tool_limit=self._limit, constrain=self._constrain)
+        return CompiledPlanner(self._generate, tool_limit=self._limit, fewshot=self._k, examples=self._examples,
+                               constrain=self._constrain)
 
-    def _compile_plan(self, request: PlannerInput, tools: dict[str, dict], reason: str | None = None) -> None:
+    def payload(self, request: PlannerInput) -> dict[str, Any]:
+        """The planner's user message without repair state; examples come first, before the request."""
         sample = request.sample
-        data: dict[str, Any] = {
+        examples = self._examples.select(sample, {tool["name"] for tool in request.tools}, self._k)
+        return {
+            **({"examples": examples} if examples else {}),
             "request": sample.user_request, "context": sample.context, "history": sample.history,
             "prior_results": [result.payload for result in sample.prior_tool_results],
             "tools": [{**tool, "parameters": _schema_for_prompt(tool["parameters"])}
                       for tool in request.tools], "tool_limit": self._limit,
         }
+
+    def _compile_plan(self, request: PlannerInput, tools: dict[str, dict], reason: str | None = None) -> None:
+        data = self.payload(request)
         plan = self._steps or []
         focus = plan[self._index] if self._steps is not None and reason is not None else None
         if reason is not None:
@@ -436,7 +641,7 @@ class CompiledPlanner:
         extra = {"json_schema": plan_json_schema(request.tools, self._limit)} if self._constrain else {}
         raw = self._generate(_SYSTEM, _json(data), deadline=request.deadline, **extra)
         self._steps = _compile(raw, request, tools, plan[:self._index], self._limit, focus=focus,
-                               suffix=tuple(plan[self._index + 1:]) if focus else ())
+                               suffix=tuple(plan[self._index + 1:]) if focus else (), results=self._results)
 
     def _observe(self, request: PlannerInput) -> str | None:
         if not self._pending:
