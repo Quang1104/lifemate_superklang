@@ -399,8 +399,14 @@ class LocalPlanner:
                  json_schema: dict | None = None) -> str:
         return self._generate(system, user, max_tokens=1_536, deadline=deadline, json_schema=json_schema)
 
+    def chat(self, messages: list[dict], tools: list[dict], *, max_tokens: int = 384,
+             deadline: float | None = None) -> str:
+        """Generate the next assistant turn in the checkpoint's own tool-calling chat format."""
+        return self._generate("", "", max_tokens=max_tokens, deadline=deadline, messages=messages, tools=tools)
+
     def _generate(self, system: str, user: str, *, max_tokens: int, deadline: float | None,
-                  json_schema: dict | None = None) -> str:
+                  json_schema: dict | None = None, messages: list[dict] | None = None,
+                  tools: list[dict] | None = None) -> str:
         if not hasattr(self, "generation_metrics"):
             self.reset_metrics()
         metrics = {"prompt_tokens": 0, "generated_tokens": 0, "reused_prefix_tokens": 0,
@@ -409,7 +415,7 @@ class LocalPlanner:
         self.generation_metrics.append(metrics)
         try:
             return self._generate_timed(system, user, max_tokens=max_tokens, deadline=deadline,
-                                        json_schema=json_schema, metrics=metrics)
+                                        json_schema=json_schema, metrics=metrics, messages=messages, tools=tools)
         finally:
             started = metrics.get("_generate_started")
             if started is not None:
@@ -419,17 +425,20 @@ class LocalPlanner:
             metrics["timing_complete"] = True
 
     def _generate_timed(self, system: str, user: str, *, max_tokens: int, deadline: float | None,
-                        json_schema: dict | None, metrics: dict) -> str:
+                        json_schema: dict | None, metrics: dict, messages: list[dict] | None = None,
+                        tools: list[dict] | None = None) -> str:
         _check_deadline(deadline)
+        native = messages is not None
         # Data may contain literal Qwen role delimiters. Escaping the opening
         # character keeps them ordinary text and preserves JSON string values.
         for token in self._tokenizer.all_special_tokens:
             if token.startswith("<"):
                 user = user.replace(token, r"\u003c" + token[1:])
-        messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
+        if not native:
+            messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
         inputs = self._tokenizer.apply_chat_template(
             messages, add_generation_prompt=True, tokenize=True, return_dict=True,
-            return_tensors="pt", enable_thinking=False,
+            return_tensors="pt", enable_thinking=False, **({"tools": tools} if tools else {}),
         )
         prompt_tokens = inputs["input_ids"].shape[-1]
         metrics["prompt_tokens"] = prompt_tokens
@@ -464,9 +473,14 @@ class LocalPlanner:
                 sequences = getattr(outputs, "sequences", outputs)
                 metrics["generated_tokens"] = len(sequences[0]) - prompt_tokens
                 _check_deadline(deadline)
+                # The native format needs its <tool_call> markers, which some tokenizers flag as special.
                 text = self._tokenizer.decode(
-                    sequences[0][prompt_tokens:], skip_special_tokens=True, clean_up_tokenization_spaces=False,
-                ).strip()
+                    sequences[0][prompt_tokens:], skip_special_tokens=not native,
+                    clean_up_tokenization_spaces=False,
+                )
+                if native:
+                    text = text.split("<|im_end|>")[0].split("<|endoftext|>")[0]
+                text = text.strip()
                 if self._reuse_prefix_cache:
                     self._prefix_cache.remember(token_ids, getattr(outputs, "past_key_values", None), input_key)
                 return text

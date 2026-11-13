@@ -45,7 +45,7 @@ def _parser() -> argparse.ArgumentParser:
     official.add_argument("--model-dir", type=Path)
     official.add_argument("--asr-dir", type=Path)
     official.add_argument("--device", default="cpu")
-    official.add_argument("--planner-mode", choices=("direct", "compiled"), default="direct")
+    official.add_argument("--planner-mode", choices=("direct", "compiled", "native"), default="direct")
     official.add_argument("--train-manifest")
     official.add_argument("--train-transcripts", action="store_true")
     official.add_argument("--control-noop", action="store_true")
@@ -132,6 +132,10 @@ def _run_official(args: argparse.Namespace) -> dict:
 
             planner_factory = CompiledPlanner(planner.generate, tool_limit=limits.max_steps - 1,
                                               constrain=True).for_sample
+        if args.planner_mode == "native":
+            from ..agent.native_planner import NativePlanner
+
+            planner_factory = NativePlanner(planner.chat).for_sample
         if args.device.startswith("cuda"):
             import torch
 
