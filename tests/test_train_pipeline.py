@@ -106,3 +106,16 @@ def test_locked_manifest_excludes_smoke_ids(tmp_path):
     validation.write_text('{"source_split":"train","validation_ids":["a","b","c"]}', encoding="utf-8")
     smoke.write_text('{"source_split":"train","validation_ids":["b"]}', encoding="utf-8")
     assert locked_ids(validation, smoke) == ["a", "c"]
+
+
+import pytest
+
+
+@pytest.mark.parametrize("split, scale", [("public_test", "3"), ("private_test", "2"), ("train", "0.5"), ("train", "nan")])
+def test_time_scale_is_train_only_and_never_tightens(tmp_path, split, scale, capsys):
+    from src.inference.__main__ import main
+
+    code = main(["official", "--split", split, "--data-root", str(tmp_path), "--output", str(tmp_path / "o.jsonl"),
+                 "--time-scale", scale])
+    assert code == 2
+    assert "Inference stopped" in capsys.readouterr().err

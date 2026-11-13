@@ -2,6 +2,7 @@
 
 import argparse
 from collections import Counter
+from dataclasses import replace
 import json
 import math
 from pathlib import Path
@@ -48,6 +49,8 @@ def _parser() -> argparse.ArgumentParser:
     official.add_argument("--train-manifest")
     official.add_argument("--train-transcripts", action="store_true")
     official.add_argument("--control-noop", action="store_true")
+    official.add_argument("--time-scale", type=float, default=1.0,
+                          help="TRAIN only: multiply every time limit to measure accuracy on slower GPUs")
     official.add_argument("--train-report", type=Path,
                           help="Record TRAIN timing and failure status separately from official logs")
     commands.add_parser("oracle", help="Explain why inference never uses TRAIN labels")
@@ -56,7 +59,10 @@ def _parser() -> argparse.ArgumentParser:
 
 def _run_official(args: argparse.Namespace) -> dict:
     train = args.split == "train"
-    if not train and (args.control_noop or args.train_manifest or args.train_transcripts or args.train_report):
+    if not math.isfinite(args.time_scale) or args.time_scale < 1:
+        raise KitError("The time scale must be a finite number of at least 1")
+    if not train and (args.control_noop or args.train_manifest or args.train_transcripts or args.train_report
+                      or args.time_scale != 1):
         raise KitError("TRAIN controls and transcripts require the TRAIN split")
     manifest = _read_manifest(args.train_manifest)
     if args.control_noop and (not manifest or args.model_dir or args.asr_dir or args.train_transcripts):
@@ -72,7 +78,10 @@ def _run_official(args: argparse.Namespace) -> dict:
     if report_path == output:
         raise KitError("TRAIN report and official output require separate files")
     kit = OfficialKit(args.data_root, args.split)
-    limits = Limits()
+    defaults = Limits()
+    limits = replace(defaults, sample_seconds=defaults.sample_seconds * args.time_scale,
+                     planner_seconds=defaults.planner_seconds * args.time_scale,
+                     tool_seconds=defaults.tool_seconds * args.time_scale)
     planner_factory = None
     parameter_counts = None
     gpu = None
@@ -127,7 +136,7 @@ def _run_official(args: argparse.Namespace) -> dict:
                "attempted": len(timing), "statuses": dict(statuses), "parameters": parameter_counts,
                "planner_artifact": str(safe_path(args.model_dir)) if args.model_dir else None,
                "asr_artifact": str(safe_path(args.asr_dir)) if args.asr_dir else None,
-               "device": args.device, "transcript_source": (
+               "device": args.device, "time_scale": args.time_scale, "transcript_source": (
                    "control" if args.control_noop else "train_oracle" if args.train_transcripts else "asr"),
                "model_load_ms": load_ms, "mean_sample_time_ms": mean(timing),
                "p95_sample_time_ms": timing[math.ceil(0.95 * len(timing)) - 1],

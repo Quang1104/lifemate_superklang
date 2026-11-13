@@ -75,7 +75,7 @@ def predict_records(kit: OfficialKit, planner: Planner, transcribe: Transcribe |
                     on_sample: Callable[[str, str, int, RunResult | None, bool], None] | None = None,
                     continue_train_failures: bool = False,
                     ) -> Iterator[OfficialRecord]:
-    if limits.sample_seconds > 30:
+    if limits.sample_seconds > 30 and kit.split != "train":  # TRAIN may scale limits to measure accuracy only.
         raise KitError("Official inference must fit the 30-second per-sample limit")
     if not 0 <= export_reserve_seconds < limits.sample_seconds:
         raise KitError("Export reserve must fit the sample time budget")

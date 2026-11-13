@@ -64,7 +64,7 @@ def evaluate(gold, predictions_path, report_path, tools):
     for sample_id, expected in gold.items():
         diagnostic = diagnostics[sample_id]
         status = diagnostic["status"]
-        if status.endswith("_timeout") or diagnostic["time"] > 30_000:
+        if status.endswith("_timeout") or diagnostic["time"] > 30_000 * report.get("time_scale", 1):
             timeouts += 1
             reason = "timeout"
         elif not diagnostic["exported"] or status.endswith("_error") or status == "plan_invalid":
@@ -103,7 +103,7 @@ def evaluate(gold, predictions_path, report_path, tools):
         "lost_proxy_points_by_outcome": {
             reason: 100 * points / len(gold) for reason, points in sorted(losses.items())},
         "source": {key: report.get(key) for key in ("mode", "planner_artifact", "asr_artifact", "parameters",
-                                                    "device", "gpu_name", "transcript_source")},
+                                                    "device", "gpu_name", "transcript_source", "time_scale")},
     }
 
 
@@ -148,6 +148,8 @@ def main():
         "improved_samples": sum(delta > 0 for delta in changes),
         "regressed_samples": sum(delta < 0 for delta in changes),
         "competition_score": "NOT MEASURED",
+        # A scaled run measures accuracy only; it does not show the 30-second limit is met.
+        "time_limit_compliant": direct_summary["source"]["time_scale"] in (None, 1, 1.0),
         "reference_evaluator_parity": "UNVERIFIED",
     }
     write_json(args.output, {**summary, "paired_samples": [
