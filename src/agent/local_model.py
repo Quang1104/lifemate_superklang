@@ -13,6 +13,7 @@ import wave
 
 from ..inference.paths import safe_path
 from .planner import PlannerInput
+from .schema_text import render_tools
 
 
 _GENERATING = Lock()
@@ -91,7 +92,7 @@ def _check_deadline(deadline: float | None) -> None:
 
 
 @contextmanager
-def _generation(torch, device, deadline: float | None):
+def _generation(torch, device, deadline: float | None, *, on_error=None):
     if deadline is None:
         acquired = _GENERATING.acquire()
     else:
@@ -108,6 +109,10 @@ def _generation(torch, device, deadline: float | None):
                 if device.type == "cuda":
                     torch.cuda.synchronize(device)
         _check_deadline(deadline)
+    except BaseException:
+        if on_error is not None:
+            on_error()
+        raise
     finally:
         _GENERATING.release()
 
@@ -126,15 +131,131 @@ def _generation_options(deadline: float | None, max_tokens: int) -> dict:
     return options
 
 
+def _direct_payload(request: PlannerInput) -> str:
+    """Put stable data before growing observations for exact token-prefix reuse."""
+    history = []
+    for turn in request.sample.history:
+        try:
+            history.append(json.loads(turn))
+        except json.JSONDecodeError:
+            history.append(turn)
+    return json.dumps({
+        "tools": render_tools(request.tools),
+        "context": request.sample.context,
+        "history": history,
+        "user_request": request.sample.user_request,
+        "observations": [asdict(observation) for observation in request.observations],
+    }, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+
+
+def _token_row(tensor) -> tuple[int, ...]:
+    row = tensor[0]
+    return tuple(row.tolist() if hasattr(row, "tolist") else row)
+
+
+def _prefix_input_key(model, tokenizer, inputs, device):
+    """Cache only single, unpadded text prompts with understood model inputs."""
+    if set(inputs) - {"input_ids", "attention_mask"}:
+        return None
+    ids = inputs["input_ids"]
+    if len(ids.shape) != 2 or ids.shape[0] != 1:
+        return None
+    mask = inputs.get("attention_mask")
+    if mask is not None and (mask.shape != ids.shape or any(value != 1 for value in _token_row(mask))):
+        return None
+    return (id(model), id(tokenizer), str(device), str(getattr(model, "device", None)),
+            str(getattr(model, "dtype", None)),
+            tuple((name, tuple(value.shape[:-1]), str(getattr(value, "device", None)),
+                   str(getattr(value, "dtype", None))) for name, value in sorted(inputs.items())))
+
+
+def _cache_layout(cache):
+    """Reject recurrent/sliding caches that cannot restore an arbitrary prefix."""
+    try:
+        if not callable(cache.crop) or not getattr(cache, "is_croppable", True):
+            return None
+        length = cache.get_seq_length()
+        if type(length) is not int or length < 1:
+            return None
+        layers = cache.layers
+        if not layers:
+            return None
+        layout = []
+        for layer in layers:
+            if getattr(layer, "is_sliding", False) or not getattr(layer, "is_croppable", True):
+                return None
+            key, value = layer.keys, layer.values
+            if (len(key.shape) != 4 or key.shape != value.shape or key.shape[0] != 1
+                    or key.shape[-2] != length or key.device != value.device or key.dtype != value.dtype):
+                return None
+            layout.append((key.shape[0], key.shape[1], key.shape[3], str(key.device), str(key.dtype)))
+        return tuple(layout)
+    except (AttributeError, IndexError, TypeError, ValueError, RuntimeError):
+        return None
+
+
+class _PrefixCache:
+    """One disposable prefix snapshot; all access is under the generation lock."""
+
+    def __init__(self):
+        self.clear()
+
+    def clear(self):
+        self.token_ids = ()
+        self.past_key_values = None
+        self.input_key = None
+        self.layout = None
+
+    def reuse(self, token_ids, input_key):
+        previous, cache, key, layout = self.token_ids, self.past_key_values, self.input_key, self.layout
+        # Consume the old snapshot before any mutation, forward pass or failure.
+        self.clear()
+        if input_key is None or input_key != key or layout is None or _cache_layout(cache) != layout:
+            return None
+        common = 0
+        for old, new in zip(previous, token_ids):
+            if old != new:
+                break
+            common += 1
+        # A fully cached prompt still needs one token to produce next-token logits.
+        common = min(common, len(token_ids) - 1, cache.get_seq_length())
+        if common < 1:
+            return None
+        try:
+            remove = cache.get_seq_length() - common
+            if remove:
+                # Negative removal counts work with both older HF and pinned 5.20.2.
+                cache.crop(-remove)
+            if cache.get_seq_length() != common or _cache_layout(cache) != layout:
+                return None
+        except (AttributeError, IndexError, TypeError, ValueError, RuntimeError, NotImplementedError):
+            return None
+        return cache
+
+    def remember(self, token_ids, cache, input_key):
+        self.clear()
+        layout = _cache_layout(cache) if input_key is not None else None
+        if layout is not None and cache.get_seq_length() >= len(token_ids):
+            self.token_ids = token_ids
+            self.past_key_values = cache
+            self.input_key = input_key
+            self.layout = layout
+
+
 class LocalPlanner:
     """Generate next-action or compiled-plan JSON with a local Qwen checkpoint."""
 
-    def __init__(self, model_dir: str | Path, *, device: str = "cpu", context_tokens: int = 16_384):
+    def __init__(self, model_dir: str | Path, *, device: str = "cpu", context_tokens: int = 16_384,
+                 reuse_prefix_cache: bool = True):
         import torch
         from transformers import AutoConfig, AutoModelForCausalLM, AutoModelForImageTextToText, AutoTokenizer
 
         if type(context_tokens) is not int or not 1 <= context_tokens <= 16_384:
             raise ValueError("Planner context limit must be between 1 and 16,384 tokens")
+        if type(reuse_prefix_cache) is not bool:
+            raise ValueError("reuse_prefix_cache must be a boolean")
+        self._reuse_prefix_cache = reuse_prefix_cache
+        self._prefix_cache = _PrefixCache()
         directory = _local_directory(model_dir)
         self._torch = torch
         self._device, dtype = _device_and_dtype(torch, device)
@@ -157,20 +278,8 @@ class LocalPlanner:
         self._context_tokens = min(context_tokens, config.get_text_config().max_position_embeddings)
 
     def __call__(self, request: PlannerInput) -> str:
-        history = []
-        for turn in request.sample.history:
-            try:
-                history.append(json.loads(turn))
-            except json.JSONDecodeError:
-                history.append(turn)
-        payload = json.dumps({
-            "user_request": request.sample.user_request,
-            "context": request.sample.context,
-            "history": history,
-            "tools": request.tools,
-            "observations": [asdict(observation) for observation in request.observations],
-        }, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
-        return self._generate(_DIRECT_INSTRUCTIONS, payload, max_tokens=512, deadline=request.deadline)
+        return self._generate(_DIRECT_INSTRUCTIONS, _direct_payload(request),
+                              max_tokens=512, deadline=request.deadline)
 
     def generate(self, system: str, user: str, *, deadline: float | None = None) -> str:
         return self._generate(system, user, max_tokens=1_536, deadline=deadline)
@@ -188,18 +297,39 @@ class LocalPlanner:
             return_tensors="pt", enable_thinking=False,
         )
         prompt_tokens = inputs["input_ids"].shape[-1]
-        available = self._context_tokens - prompt_tokens
-        if available < 1:
-            raise ValueError("Planner input leaves no room to generate within the context limit")
-        with _generation(self._torch, self._device, deadline):
-            outputs = self._model.generate(
-                **inputs.to(self._device), **_generation_options(deadline, min(available, max_tokens)),
-                use_cache=True,
-            )
-            _check_deadline(deadline)
-            return self._tokenizer.decode(
-                outputs[0][prompt_tokens:], skip_special_tokens=True, clean_up_tokenization_spaces=False,
-            ).strip()
+        with _generation(self._torch, self._device, deadline, on_error=self._prefix_cache.clear):
+            # Check the COMPLETE prompt, even if most tokens can reuse cached KV.
+            available = self._context_tokens - prompt_tokens
+            if available < 1:
+                self._prefix_cache.clear()
+                raise ValueError("Planner input leaves no room to generate within the context limit")
+            try:
+                token_ids = _token_row(inputs["input_ids"]) if self._reuse_prefix_cache else ()
+                input_key = _prefix_input_key(self._model, self._tokenizer, inputs, self._device)
+                inputs = inputs.to(self._device)
+                past = self._prefix_cache.reuse(token_ids, input_key) if self._reuse_prefix_cache else None
+                if not self._reuse_prefix_cache:
+                    self._prefix_cache.clear()
+                options = _generation_options(deadline, min(available, max_tokens))
+                options["return_dict_in_generate"] = self._reuse_prefix_cache
+                if past is not None:
+                    options["past_key_values"] = past
+                _check_deadline(deadline)
+                # HF receives the full IDs and mask, preserving length limits and
+                # logits processors. It slices off cached IDs before model prefill.
+                outputs = self._model.generate(**inputs, **options, use_cache=True)
+                _check_deadline(deadline)
+                sequences = getattr(outputs, "sequences", outputs)
+                text = self._tokenizer.decode(
+                    sequences[0][prompt_tokens:], skip_special_tokens=True, clean_up_tokenization_spaces=False,
+                ).strip()
+                if self._reuse_prefix_cache:
+                    self._prefix_cache.remember(token_ids, getattr(outputs, "past_key_values", None), input_key)
+                return text
+            except BaseException:
+                self._prefix_cache.clear()
+                raise
+
 
 
 def _read_audio(path: Path):
