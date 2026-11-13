@@ -64,18 +64,24 @@ def evaluate(gold, predictions_path, report_path, tools):
     for sample_id, expected in gold.items():
         diagnostic = diagnostics[sample_id]
         status = diagnostic["status"]
-        if status.endswith("_timeout") or diagnostic["time"] > 30_000 * report.get("time_scale", 1):
+        # Official scoring grades every exported record; only an overrun or a missing record is zero.
+        if diagnostic["time"] > 30_000 * report.get("time_scale", 1):
             timeouts += 1
-            reason = "timeout"
-        elif not diagnostic["exported"] or status.endswith("_error") or status == "plan_invalid":
+            reason = "over_time_limit"
+        elif not diagnostic["exported"]:
             failures += 1
-            reason = "invalid_plan" if status == "plan_invalid" else "execution_failure"
+            reason = "not_exported"
         else:
             measured = score_sample(expected, predictions[sample_id], tools)
             observed.append(measured)
             scores[sample_id] = measured["score"]
+            if status.endswith("_timeout") or status.endswith("_error") or status == "plan_invalid":
+                failures += status == "plan_invalid" or status.endswith("_error")
+                timeouts += status.endswith("_timeout")
             if measured["score"] < 1:
-                if measured["gold_empty"]:
+                if status == "plan_invalid" or status.endswith("_timeout") or status.endswith("_error"):
+                    reason = status  # the agent stopped early; the exported record was still scored
+                elif measured["gold_empty"]:
                     reason = "unexpected_action"
                 elif not predictions[sample_id]["tool_calls"]:
                     reason = "missing_all_actions"

@@ -60,9 +60,26 @@ def test_training_reports_asr_timeout_and_exports_real_log(tmp_path):
                                   "p95_sample_time_ms": 1, "max_sample_time_ms": 1}), encoding="utf-8")
     gold = {f"synthetic-{number}": {"tool_calls": []} for number in (1, 2)}
     scores, summary = evaluate(gold, predictions, report, {})
-    assert scores == {"synthetic-1": 0.0, "synthetic-2": 1.0}
-    assert summary["local_proxy_0_to_100"] == 50
+    # The internal ASR deadline fired within 30 s and an empty record was exported, so the
+    # official scorer grades it like any record: empty prediction vs empty gold scores 1.
+    assert scores == {"synthetic-1": 1.0, "synthetic-2": 1.0}
+    assert summary["local_proxy_0_to_100"] == 100
     assert summary["timeout_count"] == 1
+
+
+def test_over_limit_and_missing_records_score_zero(tmp_path):
+    predictions = tmp_path / "p.jsonl"
+    predictions.write_text(json.dumps({"id": "a", "tool_calls": [], "state_hash": "h"}) + "\n", encoding="utf-8")
+    report = tmp_path / "r.json"
+    report.write_text(json.dumps({"split": "train", "planner_mode": "direct", "p95_sample_time_ms": 1,
+                                  "max_sample_time_ms": 1, "samples": [
+                                      {"id": "a", "status": "finished", "time": 30_001, "exported": True},
+                                      {"id": "b", "status": "planner_error", "time": 10, "exported": False}]}),
+                      encoding="utf-8")
+    gold = {"a": {"tool_calls": []}, "b": {"tool_calls": []}}
+    scores, summary = evaluate(gold, predictions, report, {})
+    assert scores == {"a": 0.0, "b": 0.0}
+    assert summary["lost_proxy_points_by_outcome"] == {"not_exported": 50.0, "over_time_limit": 50.0}
 
 
 def test_planner_deadline_leaves_time_to_export_real_log():
