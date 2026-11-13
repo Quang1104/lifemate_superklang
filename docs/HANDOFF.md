@@ -14,6 +14,7 @@ File này là nguồn sự thật chung. **Đọc trước khi làm, cập nhậ
 | 13/11 | smoke40, Qwen3.5-4B + PhoWhisper-medium, T4, x1 | direct 10.0; compiled 0.0 (35/40 planner_timeout); sàn no-op 12.5 |
 | 13/11 | đo tốc độ Qwen3.5-4B trên T4 | ~14 tok/s (thiếu kernel linear-attention); prefill 7.9k token ≈ 6 s |
 | 13/11 | smoke40, Qwen3-4B-Instruct-2507, T4, TIME_SCALE=3 | direct 5.8 (state_mismatch 52.5, missing 22.5, unexpected 7.5; 0 timeout); compiled 7.5 (**invalid_plan 67.5**, 27/40); compiled + transcript gốc 2.5 (invalid_plan 92.5) |
+| 13/11 | chấm lại smoke40_x3 bằng `compare_train` đã sửa (record đã xuất được chấm như BTC) | direct 5.83; compiled 12.5; compiled + transcript gốc 12.5 = đúng mức sàn no-op (chỉ ăn điểm 5 mẫu gold rỗng). Direct dưới sàn vì đoán sai → **bỏ qua khi không chắc** tốt hơn đoán |
 | 13/11 | chẩn đoán 8 mẫu compiled (transcript gốc) | lỗi chính `InvalidPlan: Expected a bounded typed argument source`: model ghi giá trị thô (`"time":"2026-11-23T06:00:00+07:00"`, `"query":"Minh"`) và bịa ID (`"contact_id":"contact_123"`) thay vì SOURCE DSL |
 
 Prompt planner hiện tại: median ~15k ký tự (~8k token) mỗi mẫu, phần lớn là schema tool.
