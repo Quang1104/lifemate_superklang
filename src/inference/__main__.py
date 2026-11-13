@@ -57,6 +57,30 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _sample_model_timings(planner, transcribe) -> dict:
+    planner_snapshot = getattr(planner, "timing_snapshot", None)
+    asr_snapshot = getattr(transcribe, "timing_snapshot", None)
+    calls = planner_snapshot() if callable(planner_snapshot) else []
+    audio = asr_snapshot() if callable(asr_snapshot) else []
+    fields = ("prompt_tokens", "generated_tokens", "reused_prefix_tokens",
+              "grammar_compile_ms", "generate_ms", "grammar_status")
+    return {"asr_ms": sum(row["asr_ms"] for row in audio), "planner_calls": len(calls),
+            "asr_timing_complete": all(row.get("timing_complete", True) for row in audio),
+            "timing_complete": [row.get("timing_complete", True) for row in calls],
+            **{field: [row[field] for row in calls] for field in fields}}
+
+
+def _model_timing_summary(samples: list[dict]) -> dict:
+    generate = sorted(value for sample in samples for value in sample["generate_ms"])
+    prompts = [value for sample in samples for value in sample["prompt_tokens"]]
+    return {"mean_planner_generate_ms": mean(generate) if generate else 0.0,
+            "p95_planner_generate_ms": generate[math.ceil(0.95 * len(generate)) - 1] if generate else 0.0,
+            "mean_prompt_tokens": mean(prompts) if prompts else 0.0,
+            "prompts_above_12000": sum(value > 12_000 for value in prompts),
+            "total_grammar_compile_ms": sum(value for sample in samples
+                                            for value in sample["grammar_compile_ms"])}
+
+
 def _run_official(args: argparse.Namespace) -> dict:
     train = args.split == "train"
     if not math.isfinite(args.time_scale) or args.time_scale < 1:
@@ -124,7 +148,8 @@ def _run_official(args: argparse.Namespace) -> dict:
             details.append({"id": sample_id, "status": status, "time": elapsed_ms, "exported": exported,
                             "steps": result.steps if result else 0,
                             "dispatched_calls": result.dispatched_calls if result else 0,
-                            "rejections": result.rejections if result else 0})
+                            "rejections": result.rejections if result else 0,
+                            **_sample_model_timings(planner, transcribe)})
 
     count = write_official_records(output, predict_records(
         kit, planner, transcribe, sample_ids=manifest, control_noop=args.control_noop,
@@ -148,7 +173,8 @@ def _run_official(args: argparse.Namespace) -> dict:
         summary["peak_gpu_memory_mib"] = round(gpu.max_memory_allocated(args.device) / 2**20, 1)
     if report_path is not None:
         report_path.parent.mkdir(parents=True, exist_ok=True)
-        report_path.write_text(json.dumps({**summary, "samples": details}, indent=2) + "\n",
+        report_path.write_text(json.dumps({**summary, **_model_timing_summary(details),
+                                           "samples": details}, indent=2) + "\n",
                                encoding="utf-8")
     return summary
 

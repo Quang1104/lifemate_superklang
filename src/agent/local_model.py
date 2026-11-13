@@ -118,7 +118,7 @@ def _generation(torch, device, deadline: float | None, *, on_error=None):
         _GENERATING.release()
 
 
-def _generation_options(deadline: float | None, max_tokens: int) -> dict:
+def _generation_options(deadline: float | None, max_tokens: int, *, metrics: dict | None = None) -> dict:
     options = {"max_new_tokens": max_tokens, "do_sample": False, "num_beams": 1,
                "temperature": None, "top_p": None, "top_k": None,
                "return_dict_in_generate": False}
@@ -126,6 +126,9 @@ def _generation_options(deadline: float | None, max_tokens: int) -> dict:
         from transformers import StoppingCriteriaList
 
         def deadline_reached(input_ids, scores, **kwargs):
+            if metrics is not None and input_ids is not None:
+                # Shapes are host metadata: retain partial counts at a timeout without a GPU sync.
+                metrics["generated_tokens"] = input_ids.shape[-1] - metrics["prompt_tokens"]
             return monotonic() >= deadline
 
         options["stopping_criteria"] = StoppingCriteriaList([deadline_reached])
@@ -243,6 +246,21 @@ class _PrefixCache:
             self.layout = layout
 
 
+def _timing_snapshot(rows: list[dict]) -> list[dict]:
+    """Copy sample metrics, including elapsed work still running at a timeout."""
+    snapshots = []
+    for row in rows.copy():
+        # A bounded callback may finish in another thread while its report is copied.
+        snapshot = row.copy()
+        now = monotonic()
+        for field in ("grammar_compile", "generate", "asr"):
+            started = snapshot.pop(f"_{field}_started", None)
+            if started is not None:
+                snapshot[f"{field}_ms"] = (now - started) * 1_000
+        snapshots.append(snapshot)
+    return snapshots
+
+
 class _GrammarLogits:
     """Batch-1 grammar mask on xgrammar's core API.
 
@@ -251,7 +269,7 @@ class _GrammarLogits:
     disables the mask for the rest of the call instead of failing the sample.
     """
 
-    def __init__(self, compiled, vocab_size: int, stats: Counter):
+    def __init__(self, compiled, vocab_size: int, stats: Counter, metrics: dict | None = None):
         import xgrammar
 
         self._xgrammar = xgrammar
@@ -259,6 +277,7 @@ class _GrammarLogits:
         self._bitmask = xgrammar.allocate_token_bitmask(1, vocab_size)
         self._vocab_size = vocab_size
         self._stats = stats
+        self._metrics = metrics
         self._prompt_length = None
         self._disabled = False
 
@@ -280,6 +299,8 @@ class _GrammarLogits:
         except Exception:  # Unconstrained decoding is safer than a failed sample.
             self._disabled = True
             self._stats["runtime_fallback"] += 1
+            if self._metrics is not None:
+                self._metrics["grammar_status"] = "runtime_fallback"
             return scores
 
 
@@ -319,32 +340,56 @@ class LocalPlanner:
         self._context_tokens = min(context_tokens, config.get_text_config().max_position_embeddings)
         self._config = config
         self._grammars: dict[str, object] = {}
-        self.grammar_stats: Counter[str] = Counter()  # constrained / unavailable / compile_failed
+        self.grammar_stats: Counter[str] = Counter()  # Cumulative across samples.
+        self.reset_metrics()
 
-    def _grammar_processor(self, json_schema: dict | None):
+    def reset_metrics(self) -> None:
+        # Replace rather than clear: a late timed-out call owns its original row.
+        self.generation_metrics: list[dict] = []
+
+    def timing_snapshot(self) -> list[dict]:
+        return _timing_snapshot(getattr(self, "generation_metrics", []))
+
+    def _grammar_processor(self, json_schema: dict | None, *, metrics: dict | None = None):
         """Return a fresh logits processor for the schema, or None to decode unconstrained."""
         if json_schema is None:
             return None
         key = json.dumps(json_schema, sort_keys=True, separators=(",", ":"))
         compiled = self._grammars.get(key)
         if compiled is None:
+            started = monotonic()
+            if metrics is not None:
+                metrics["_grammar_compile_started"] = started
+                metrics["grammar_status"] = "compiling"
             try:
-                import xgrammar
-            except ImportError:
-                self.grammar_stats["unavailable"] += 1
-                return None
-            try:
-                info = xgrammar.TokenizerInfo.from_huggingface(
-                    self._tokenizer, vocab_size=self._config.get_text_config().vocab_size)
-                compiled = xgrammar.GrammarCompiler(info).compile_json_schema(key)
-            except Exception:  # A grammar we cannot compile must not block planning.
-                self.grammar_stats["compile_failed"] += 1
-                return None
-            if len(self._grammars) >= 64:
-                self._grammars.clear()
-            self._grammars[key] = compiled
+                try:
+                    import xgrammar
+                except ImportError:
+                    self.grammar_stats["unavailable"] += 1
+                    if metrics is not None:
+                        metrics["grammar_status"] = "unavailable"
+                    return None
+                try:
+                    info = xgrammar.TokenizerInfo.from_huggingface(
+                        self._tokenizer, vocab_size=self._config.get_text_config().vocab_size)
+                    compiled = xgrammar.GrammarCompiler(info).compile_json_schema(key)
+                except Exception:  # A grammar we cannot compile must not block planning.
+                    self.grammar_stats["compile_failed"] += 1
+                    if metrics is not None:
+                        metrics["grammar_status"] = "compile_failed"
+                    return None
+                if len(self._grammars) >= 64:
+                    self._grammars.clear()
+                self._grammars[key] = compiled
+            finally:
+                if metrics is not None:
+                    metrics["grammar_compile_ms"] = (monotonic() - started) * 1_000
+                    metrics.pop("_grammar_compile_started", None)
         self.grammar_stats["constrained"] += 1
-        return _GrammarLogits(compiled, self._config.get_text_config().vocab_size, self.grammar_stats)
+        if metrics is not None:
+            metrics["grammar_status"] = "constrained"
+        return _GrammarLogits(compiled, self._config.get_text_config().vocab_size,
+                              self.grammar_stats, metrics)
 
     def __call__(self, request: PlannerInput) -> str:
         return self._generate(_DIRECT_INSTRUCTIONS, _direct_payload(request),
@@ -356,6 +401,25 @@ class LocalPlanner:
 
     def _generate(self, system: str, user: str, *, max_tokens: int, deadline: float | None,
                   json_schema: dict | None = None) -> str:
+        if not hasattr(self, "generation_metrics"):
+            self.reset_metrics()
+        metrics = {"prompt_tokens": 0, "generated_tokens": 0, "reused_prefix_tokens": 0,
+                   "grammar_compile_ms": 0.0, "generate_ms": 0.0, "grammar_status": "unconstrained",
+                   "timing_complete": False}
+        self.generation_metrics.append(metrics)
+        try:
+            return self._generate_timed(system, user, max_tokens=max_tokens, deadline=deadline,
+                                        json_schema=json_schema, metrics=metrics)
+        finally:
+            started = metrics.get("_generate_started")
+            if started is not None:
+                # _generation has already performed its existing CUDA sync, even on errors.
+                metrics["generate_ms"] = (monotonic() - started) * 1_000
+                metrics.pop("_generate_started", None)
+            metrics["timing_complete"] = True
+
+    def _generate_timed(self, system: str, user: str, *, max_tokens: int, deadline: float | None,
+                        json_schema: dict | None, metrics: dict) -> str:
         _check_deadline(deadline)
         # Data may contain literal Qwen role delimiters. Escaping the opening
         # character keeps them ordinary text and preserves JSON string values.
@@ -368,6 +432,7 @@ class LocalPlanner:
             return_tensors="pt", enable_thinking=False,
         )
         prompt_tokens = inputs["input_ids"].shape[-1]
+        metrics["prompt_tokens"] = prompt_tokens
         with _generation(self._torch, self._device, deadline, on_error=self._prefix_cache.clear):
             # Check the COMPLETE prompt, even if most tokens can reuse cached KV.
             available = self._context_tokens - prompt_tokens
@@ -381,11 +446,12 @@ class LocalPlanner:
                 past = self._prefix_cache.reuse(token_ids, input_key) if self._reuse_prefix_cache else None
                 if not self._reuse_prefix_cache:
                     self._prefix_cache.clear()
-                options = _generation_options(deadline, min(available, max_tokens))
+                options = _generation_options(deadline, min(available, max_tokens), metrics=metrics)
                 options["return_dict_in_generate"] = self._reuse_prefix_cache
                 if past is not None:
                     options["past_key_values"] = past
-                processor = self._grammar_processor(json_schema)
+                    metrics["reused_prefix_tokens"] = past.get_seq_length()
+                processor = self._grammar_processor(json_schema, metrics=metrics)
                 if processor is not None:
                     from transformers import LogitsProcessorList
 
@@ -393,9 +459,11 @@ class LocalPlanner:
                 _check_deadline(deadline)
                 # HF receives the full IDs and mask, preserving length limits and
                 # logits processors. It slices off cached IDs before model prefill.
+                metrics["_generate_started"] = monotonic()
                 outputs = self._model.generate(**inputs, **options, use_cache=True)
-                _check_deadline(deadline)
                 sequences = getattr(outputs, "sequences", outputs)
+                metrics["generated_tokens"] = len(sequences[0]) - prompt_tokens
+                _check_deadline(deadline)
                 text = self._tokenizer.decode(
                     sequences[0][prompt_tokens:], skip_special_tokens=True, clean_up_tokenization_spaces=False,
                 ).strip()
@@ -442,11 +510,31 @@ class LocalWhisper:
         ).to(self._device).eval()
         self.parameter_count = sum(parameter.numel() for parameter in self._model.parameters())
         self._chunk_seconds = self._processor.feature_extractor.chunk_length
+        self.reset_metrics()
+
+    def reset_metrics(self) -> None:
+        self.asr_metrics: list[dict] = []
+
+    def timing_snapshot(self) -> list[dict]:
+        return _timing_snapshot(getattr(self, "asr_metrics", []))
 
     def __call__(self, path: Path) -> str:
         return self.transcribe(path)
 
     def transcribe(self, path: Path, *, deadline: float | None = None) -> str:
+        if not hasattr(self, "asr_metrics"):
+            self.reset_metrics()
+        metrics = {"path": str(path), "asr_ms": 0.0, "timing_complete": False,
+                   "_asr_started": monotonic()}
+        self.asr_metrics.append(metrics)
+        try:
+            return self._transcribe_timed(path, deadline=deadline)
+        finally:
+            metrics["asr_ms"] = (monotonic() - metrics["_asr_started"]) * 1_000
+            metrics.pop("_asr_started", None)
+            metrics["timing_complete"] = True
+
+    def _transcribe_timed(self, path: Path, *, deadline: float | None) -> str:
         _check_deadline(deadline)
         audio = _read_audio(path)
         long_audio = len(audio) > 16_000 * self._chunk_seconds

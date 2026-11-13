@@ -84,6 +84,10 @@ def predict_records(kit: OfficialKit, planner: Planner, transcribe: Transcribe |
     if kit.split != "train" and (transcribe is None or control_noop or sample_ids is not None):
         raise KitError("A test run requires ASR and the complete test split")
     for row in kit.rows(sample_ids):
+        for model in (planner, transcribe):
+            reset_metrics = getattr(model, "reset_metrics", None)
+            if callable(reset_metrics):
+                reset_metrics()
         started = monotonic()
         deadline = started + limits.sample_seconds
         execution_deadline = deadline - export_reserve_seconds
