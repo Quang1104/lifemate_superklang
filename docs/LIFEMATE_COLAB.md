@@ -2,7 +2,7 @@
 
 Mục tiêu là 80/100 trên phép chấm cục bộ theo quy tắc công bố. Kết quả GPU và điểm đầu cuối hiện **NOT MEASURED**. Notebook dùng kit TRAIN chính thức đã có trên Colab. Đặt repo và kit ở hai đường dẫn riêng.
 
-1. Chọn GPU trong Colab và mở [lifemate_colab.ipynb](../lifemate_colab.ipynb). Sửa `REPO`, `KIT`, `RUNS` ở cell cấu hình. `RUNS` có thể trỏ vào một thư mục ghi được trên Drive để giữ báo cáo giữa các phiên.
+1. Tải `train+public_test` lên Google Drive một lần. Mở notebook từ GitHub: `https://colab.research.google.com/github/Quang1104/lifemate_superklang/blob/colab-smoke/lifemate_colab.ipynb`, chọn GPU T4. Cell đầu clone nhánh `colab-smoke`, mount Drive và chép kit sang `/content`. Cell cuối của phần smoke lưu file zip kết quả lên `MyDrive/lifemate_results` và tải về máy. Mức sàn: chạy no-op được 12,5 điểm proxy trên 40 mẫu smoke, vì đó là các mẫu có gold rỗng.
 2. Chạy các cell chuẩn bị và smoke. Hai nhánh dùng cùng checkpoint, ASR, 40 ID và seed. Nhánh `direct` gọi model mỗi bước. Nhánh `compiled` lập kế hoạch một lần và có tối đa một lượt sửa.
 3. Sau khi chốt prompt và model bằng smoke, chạy cell **269 mẫu ngoài smoke**. Notebook giữ riêng dự đoán, chẩn đoán timeout và điểm proxy. Cấu hình hết VRAM có thể chuyển sang `fallback_planner` trước khi bắt đầu lại cả hai nhánh. So sánh theo điểm proxy, tỷ lệ đúng hash, F1 trên mẫu đúng hash, số mẫu cải thiện/hồi quy, p95 và max.
 
