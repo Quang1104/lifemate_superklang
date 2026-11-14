@@ -45,6 +45,8 @@ class RunResult:
     dispatched_calls: int
     rejections: int
     session_safe_to_export: bool
+    guard_rejections: tuple[dict[str, str], ...] = ()
+    last_planner_output: str | None = None
 
 
 class CallTimeout(TimeoutError):
@@ -106,9 +108,14 @@ def run_sample(sample: Sample, registry: ToolRegistry, planner: Planner,
     dispatched_calls = 0
     rejections = 0
     step = 0
+    last_planner_output: str | None = None
 
     def result(status: str, reply: str | None = None, *, safe: bool = True) -> RunResult:
-        return RunResult(status, reply, step, dispatched_calls, rejections, safe)
+        # Guard reasons already exclude submitted values; never include arguments.
+        guard_rejections = tuple({"tool": item.tool, "reason": item.content["reason"]}
+                                 for item in observations if item.kind == "rejected" and item.tool is not None)
+        return RunResult(status, reply, step, dispatched_calls, rejections, safe,
+                         guard_rejections, last_planner_output if dispatched_calls == 0 else None)
 
     for step in range(1, limits.max_steps + 1):
         if monotonic() >= deadline:
@@ -117,8 +124,12 @@ def run_sample(sample: Sample, registry: ToolRegistry, planner: Planner,
         request = PlannerInput(deepcopy(sample), deepcopy(tools), tuple(deepcopy(observations)),
                                planner_deadline - 0.1)
         try:
-            action = parse_action(_bounded_call(lambda: planner(request), remaining(limits.planner_seconds)),
-                                  max_bytes=limits.planner_output_bytes)
+            output = _bounded_call(lambda: planner(request), remaining(limits.planner_seconds))
+            # TRAIN native diagnostics expose the raw chat text before call normalization.
+            diagnostic_output = getattr(planner, "last_planner_output", None)
+            last_planner_output = (diagnostic_output[:400] if isinstance(diagnostic_output, str)
+                                   else output[:400] if isinstance(output, str) else None)
+            action = parse_action(output, max_bytes=limits.planner_output_bytes)
         except CallTimeout:
             # Only a tool call can be in flight against the environment.
             return result("planner_timeout")

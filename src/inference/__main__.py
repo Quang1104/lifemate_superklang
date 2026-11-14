@@ -81,6 +81,25 @@ def _model_timing_summary(samples: list[dict]) -> dict:
                                             for value in sample["grammar_compile_ms"])}
 
 
+class _TrainNativeDiagnostics:
+    """Observe one native session without changing its calls, prompts, or outputs."""
+
+    def __init__(self, planner) -> None:
+        self._planner = planner
+        self.last_planner_output: str | None = None
+        chat = planner._chat
+
+        def observe(*args, **kwargs):
+            text = chat(*args, **kwargs)
+            self.last_planner_output = text[:400] if isinstance(text, str) else None
+            return text
+
+        planner._chat = observe
+
+    def __call__(self, request):
+        return self._planner(request)
+
+
 def _run_official(args: argparse.Namespace, *, models: ModelHandle | None = None) -> dict:
     train = args.split == "train"
     if not math.isfinite(args.time_scale) or args.time_scale < 1:
@@ -117,6 +136,14 @@ def _run_official(args: argparse.Namespace, *, models: ModelHandle | None = None
     planner = models.planner
     transcribe = models.transcribe
     planner_factory = models.planner_factory
+    if report_path is not None and planner_factory is not None:
+        from ..agent.native_planner import NativePlanner
+
+        base_factory = planner_factory
+
+        def planner_factory():
+            active = base_factory()
+            return _TrainNativeDiagnostics(active) if isinstance(active, NativePlanner) else active
     parameter_counts = models.parameter_counts
     gpu = models.gpu
     load_ms = models.load_ms
@@ -132,6 +159,9 @@ def _run_official(args: argparse.Namespace, *, models: ModelHandle | None = None
                             "steps": result.steps if result else 0,
                             "dispatched_calls": result.dispatched_calls if result else 0,
                             "rejections": result.rejections if result else 0,
+                            "guard_rejections": list(result.guard_rejections) if result else [],
+                            **({"last_planner_output": result.last_planner_output if result else None}
+                               if result is None or result.dispatched_calls == 0 else {}),
                             **_sample_model_timings(planner, transcribe)})
 
     count = write_official_records(output, predict_records(
