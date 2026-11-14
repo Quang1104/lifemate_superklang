@@ -8,9 +8,15 @@
 !docker/predict.sh
 !docker/start_jupyter.sh
 !docker/predict_notebook.ipynb
+!docker/README.md
+!scripts/
+!scripts/build_sft.py
+!research/
+!research/validation_split.json
 !configs/
 !configs/colab_models.json
 !training_code/
 !training_code/README.md
+!training_code/*.py
 **/__pycache__/
 **/*.pyc
