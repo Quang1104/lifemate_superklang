@@ -7,7 +7,9 @@ the model while the runner keeps every existing guard.
 """
 
 from collections.abc import Callable
+from datetime import datetime, timedelta
 import json
+import os
 
 from .planner import PlannerInput
 
@@ -26,6 +28,35 @@ Quy tắc:
 9. Khi đã làm xong mọi việc, trả lời một câu ngắn và không gọi tool nữa."""
 
 _RESULT_CHARS = 6_000
+
+_WEEKDAYS = ("thứ Hai", "thứ Ba", "thứ Tư", "thứ Năm", "thứ Sáu", "thứ Bảy", "Chủ nhật")
+
+
+def render_date_table(current_time: str | None) -> str:
+    """Render local calendar anchors, independent of the host clock and locale.
+
+    A week starts on Monday. Missing, invalid or offset-free timestamps yield no
+    table rather than guessing a timezone. The input's offset defines its date.
+    """
+    if not isinstance(current_time, str):
+        return ""
+    try:
+        anchor = datetime.fromisoformat(current_time)
+        if anchor.utcoffset() is None:
+            return ""
+        today = anchor.date()
+        monday = today - timedelta(days=today.weekday())
+        lines = ["Bảng ngày (tuần từ thứ Hai đến Chủ nhật):"]
+        for label, offset in (("hôm nay", 0), ("mai", 1), ("ngày kia", 2), ("hôm qua", -1)):
+            day = today + timedelta(days=offset)
+            lines.append(f"{label}: {_WEEKDAYS[day.weekday()]} {day.isoformat()}")
+        for week, suffix in ((0, "này (tuần này)"), (1, "tuần sau")):
+            for weekday, name in enumerate(_WEEKDAYS):
+                day = monday + timedelta(days=7 * week + weekday)
+                lines.append(f"{name} {suffix}: {day.isoformat()}")
+        return "\n".join(lines)
+    except (ValueError, OverflowError):
+        return ""
 
 # The guard's terse rule names gave the model nothing to act on; smoke40 runs repeated the rejected call and stopped.
 _REJECTION_HINTS = {
@@ -78,6 +109,10 @@ def build_messages(request: PlannerInput) -> list[dict]:
     context = sample.context or {}
     system = (f"{_SYSTEM}\n\nThời gian hiện tại: {context.get('current_time')} ({context.get('timezone')})\n"
               f"Vị trí: {_dump(context.get('location'))}\nHồ sơ người dùng: {_dump(context.get('user_profile'))}")
+    if os.environ.get("LIFEMATE_DATE_TABLE") == "1":
+        date_table = render_date_table(context.get("current_time"))
+        if date_table:
+            system += "\n\n" + date_table
     messages = [{"role": "system", "content": system}]
     for raw in sample.history:
         try:

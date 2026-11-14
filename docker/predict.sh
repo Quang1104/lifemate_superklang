@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+export PYTHONHASHSEED=20261112
+
 cd /code
 exec python -B -m src.inference official \
     --split private_test --data-root /data \
