@@ -23,17 +23,21 @@ if (-not (Test-Path -LiteralPath $stateFile)) { throw "No ${stateFile}: nothing 
 $state = Get-Content -LiteralPath $stateFile -Raw | ConvertFrom-Json
 $before = @($state.images_before)
 
-& docker info --format '{{.ServerVersion}}' | Out-Null
+# PS 5.1 turns a native command's stderr into terminating errors under 'Stop' (e.g. removing an
+# image that is already gone), so Docker calls run with 'Continue' and are judged by exit code.
+$ErrorActionPreference = 'Continue'
+& docker info --format '{{.ServerVersion}}' *> $null
 if ($LASTEXITCODE -eq 0) {
-    & docker image rm --force $state.image 2>$null | Out-Null
+    & docker image rm --force $state.image *> $null
     foreach ($id in @(& docker image ls --quiet --no-trunc)) {
-        if ($before -notcontains $id) { & docker image rm --force $id 2>$null | Out-Null }
+        if ($before -notcontains $id) { & docker image rm --force $id *> $null }
     }
-    & docker builder prune --all --force | Out-Null
+    & docker builder prune --all --force *> $null
     Write-Output 'Removed the LifeMate image, images added by the build, and the build cache.'
 } else {
     Write-Output 'Docker is not running: start Docker Desktop and rerun to remove images.'
 }
+$ErrorActionPreference = 'Stop'
 
 if ($DeleteArchive) {
     foreach ($path in @($state.archive, "$($state.archive).md5")) {
@@ -51,12 +55,14 @@ if ($CompactDisk) {
     $vhdx = Join-Path $env:LOCALAPPDATA 'Docker\wsl\disk\docker_data.vhdx'
     $beforeGB = [math]::Round((Get-Item -LiteralPath $vhdx).Length / 1GB, 1)
     Get-Process -Name 'Docker Desktop' -ErrorAction SilentlyContinue | Stop-Process -Force
+    $ErrorActionPreference = 'Continue'  # native wsl/diskpart; success is judged by the file size below
     & wsl --shutdown
     $script = Join-Path $env:TEMP 'lifemate-compact.txt'
     "select vdisk file=`"$vhdx`"`r`nattach vdisk readonly`r`ncompact vdisk`r`ndetach vdisk" |
         Set-Content -LiteralPath $script -Encoding Ascii
     & diskpart /s $script | Out-Null
     Remove-Item -LiteralPath $script -Force
+    $ErrorActionPreference = 'Stop'
     $afterGB = [math]::Round((Get-Item -LiteralPath $vhdx).Length / 1GB, 1)
     Write-Output "Docker disk image: $beforeGB GB -> $afterGB GB"
 }
