@@ -19,6 +19,6 @@ COPY docker/predict_notebook.ipynb ./
 COPY training_code ./training_code
 COPY configs/colab_models.json ./configs/colab_models.json
 
-ARG PLANNER_MODE=compiled
+ARG PLANNER_MODE=native
 ENV LIFEMATE_PLANNER_MODE=${PLANNER_MODE}
 CMD ["/code/predict.sh"]
