@@ -10,6 +10,7 @@ import json
 from pathlib import Path
 import random
 import re
+import time
 
 ASSISTANT = re.compile(r"<\|im_start\|>assistant\n(.*?<\|im_end\|>)", re.S)
 
@@ -78,7 +79,8 @@ def main() -> None:
     print(json.dumps({"rows": len(rows), "used": len(examples), "skipped": skipped,
                       "tokens_p50": lengths[len(lengths) // 2], "tokens_max": lengths[-1]}), flush=True)
 
-    dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+    # T4 reports emulated bf16 as supported; emulated bf16 SDPA falls back to the quadratic math kernel and OOMs.
+    dtype = torch.bfloat16 if torch.cuda.is_bf16_supported(including_emulation=False) else torch.float16
     model = AutoModelForCausalLM.from_pretrained(
         args.model_dir, dtype=dtype, device_map={"": 0}, attn_implementation="sdpa",
         quantization_config=BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",
@@ -113,7 +115,7 @@ def main() -> None:
         order += epoch
     order = order[done_steps * args.grad_accum: total * args.grad_accum]
     model.train()
-    running, step = 0.0, done_steps
+    running, step, started = 0.0, done_steps, time.monotonic()
     for index, example_index in enumerate(order, start=1):
         ids, labels = examples[example_index]
         input_ids = torch.tensor([ids], device="cuda")
@@ -136,7 +138,8 @@ def main() -> None:
         step += 1
         if step % 10 == 0 or step == total:
             print(json.dumps({"step": step, "of": total, "loss": round(running / 10 if step % 10 == 0 else running, 4),
-                              "lr": schedule.get_last_lr()[0]}), flush=True)
+                              "lr": schedule.get_last_lr()[0], "elapsed_s": round(time.monotonic() - started)}),
+                  flush=True)
             running = 0.0
         if step % args.save_every == 0 or step == total:
             model.save_pretrained(out)

@@ -39,6 +39,13 @@ def test_messages_carry_context_history_and_results_without_role_markers():
     assert tool_definitions(TOOLS)[0]["function"]["name"] == "contacts.search"
 
 
+def test_guard_rejection_tells_the_model_how_to_recover():
+    rejected = Observation("rejected", "phone.call", {"reason": "Tool arguments failed validation (x-ref)"},
+                           {"contact_id": "contact_123"})
+    content = json.loads(build_messages(request([rejected]))[-1]["content"])
+    assert content["ok"] is False and "tra cứu" in content["hint"]
+
+
 def test_parallel_calls_are_queued_and_rejection_forces_a_replan():
     outputs = iter([call("contacts.search", {"query": "Minh"}) + call("phone.call", {"contact_id": "contact_123"}),
                     call("phone.call", {"contact_id": "c1"}),

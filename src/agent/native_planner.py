@@ -27,6 +27,14 @@ Quy tắc:
 
 _RESULT_CHARS = 6_000
 
+# The guard's terse rule names gave the model nothing to act on; smoke40 runs repeated the rejected call and stopped.
+_REJECTION_HINTS = {
+    "(x-ref)": "ID này chưa có trong kết quả tool hay lịch sử. Gọi tool tra cứu (list/search/get) để lấy ID thật.",
+    "(additionalProperties)": "Có tham số không có trong schema của tool. Chỉ dùng đúng tên tham số đã khai báo.",
+    "(required)": "Thiếu tham số bắt buộc. Tra cứu để có giá trị, hoặc gọi sys.ask_missing_info.",
+    "(enum)": "Giá trị không thuộc danh sách cho phép của tham số.",
+}
+
 
 def tool_definitions(tools: list[dict]) -> list[dict]:
     return [{"type": "function", "function": {"name": tool["name"], "description": tool["description"],
@@ -60,6 +68,11 @@ def _call_message(name: str, arguments: dict) -> dict:
             "tool_calls": [{"type": "function", "function": {"name": name, "arguments": arguments}}]}
 
 
+def _rejection(reason: str) -> dict:
+    hints = [hint for rule, hint in _REJECTION_HINTS.items() if rule in reason]
+    return {"ok": False, "error": reason, **({"hint": hints[0]} if hints else {})}
+
+
 def build_messages(request: PlannerInput) -> list[dict]:
     sample = request.sample
     context = sample.context or {}
@@ -87,8 +100,8 @@ def build_messages(request: PlannerInput) -> list[dict]:
         if observation.tool is None:
             continue
         messages.append(_call_message(observation.tool, observation.arguments or {}))
-        content = observation.content if observation.kind != "rejected" else {
-            "ok": False, "error": observation.content.get("reason", "rejected")}
+        content = observation.content if observation.kind != "rejected" else _rejection(
+            observation.content.get("reason", "rejected"))
         messages.append({"role": "tool", "content": _dump(content)})
     return messages
 
