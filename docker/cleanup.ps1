@@ -29,8 +29,10 @@ $ErrorActionPreference = 'Continue'
 & docker info --format '{{.ServerVersion}}' *> $null
 if ($LASTEXITCODE -eq 0) {
     & docker image rm --force $state.image *> $null
-    foreach ($id in @(& docker image ls --quiet --no-trunc)) {
-        if ($before -notcontains $id) { & docker image rm --force $id *> $null }
+    foreach ($pass in 1..2) {  # a base image (lifemate:deps) can only go once the image built on it is gone
+        foreach ($id in @(& docker image ls --quiet --no-trunc)) {
+            if ($before -notcontains $id) { & docker image rm --force $id *> $null }
+        }
     }
     & docker builder prune --all --force *> $null
     Write-Output 'Removed the LifeMate image, images added by the build, and the build cache.'
@@ -54,8 +56,10 @@ if ($CompactDisk) {
     if (-not $admin) { throw '-CompactDisk needs an Administrator PowerShell.' }
     $vhdx = Join-Path $env:LOCALAPPDATA 'Docker\wsl\disk\docker_data.vhdx'
     $beforeGB = [math]::Round((Get-Item -LiteralPath $vhdx).Length / 1GB, 1)
-    Get-Process -Name 'Docker Desktop' -ErrorAction SilentlyContinue | Stop-Process -Force
     $ErrorActionPreference = 'Continue'  # native wsl/diskpart; success is judged by the file size below
+    # Without discarding freed blocks first, compact leaves the file at full size (measured 55.1 -> 55.1 GB).
+    & wsl -d docker-desktop -- fstrim /mnt/docker-desktop-disk
+    Get-Process -Name 'Docker Desktop' -ErrorAction SilentlyContinue | Stop-Process -Force
     & wsl --shutdown
     $script = Join-Path $env:TEMP 'lifemate-compact.txt'
     "select vdisk file=`"$vhdx`"`r`nattach vdisk readonly`r`ncompact vdisk`r`ndetach vdisk" |
