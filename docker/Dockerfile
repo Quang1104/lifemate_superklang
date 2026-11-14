@@ -7,13 +7,14 @@ ENV PATH="/opt/lifemate/bin:${PATH}" \
 RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-venv \
     && rm -rf /var/lib/apt/lists/* \
     && python3 -m venv /opt/lifemate
-RUN pip install --no-cache-dir torch==2.14.1 --index-url https://download.pytorch.org/whl/cu132
+# pip cache lives in a BuildKit cache mount (never in the image) so a dropped connection resumes, not restarts.
+RUN --mount=type=cache,target=/root/.cache/pip pip install --retries 10 --timeout 60 torch==2.14.1 --index-url https://download.pytorch.org/whl/cu132
 
 WORKDIR /code
 COPY pyproject.toml ./
 COPY docker/README.md ./README.md
 COPY src ./src
-RUN pip install --no-cache-dir '.[model]' 'jupyterlab>=4.4,<5' peft bitsandbytes
+RUN --mount=type=cache,target=/root/.cache/pip pip install --retries 10 --timeout 60 '.[model]' 'jupyterlab>=4.4,<5' peft bitsandbytes
 COPY configs/colab_models.json ./configs/colab_models.json
 COPY training_code ./training_code
 COPY docker/fetch_models.py ./fetch_models.py
