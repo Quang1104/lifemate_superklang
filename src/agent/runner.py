@@ -3,6 +3,7 @@
 from copy import deepcopy
 from dataclasses import dataclass
 from math import isfinite
+import os
 from queue import Empty, Queue
 from threading import Thread
 from time import monotonic
@@ -12,7 +13,8 @@ from ..inference.types import Sample
 from ..tooling.evidence import EvidenceLedger
 from ..tooling.json_data import InvalidJSON, decode_json, encode_json
 from ..tooling.registry import ToolRegistry, ToolRejected
-from .planner import Finish, Observation, Planner, PlannerInput, parse_action
+from .arg_normalize import normalize_arguments
+from .planner import Finish, Observation, Planner, PlannerInput, ToolCall, parse_action
 
 
 class Environment(Protocol):
@@ -145,6 +147,11 @@ def run_sample(sample: Sample, registry: ToolRegistry, planner: Planner,
             if action.reply in {"plan_invalid", "plan_incomplete", "plan_timeout"}:
                 return result(action.reply)
             return result("finished", action.reply)
+
+        if os.environ.get("LIFEMATE_ARG_NORMALIZE") == "1":
+            parameters = next((tool["parameters"] for tool in tools if tool["name"] == action.name), None)
+            if parameters is not None:
+                action = ToolCall(action.name, normalize_arguments(action.arguments, parameters, sample.context))
 
         try:
             spec = registry.authorize(action.name, action.arguments, sample.installed_apps,

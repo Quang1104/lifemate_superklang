@@ -27,6 +27,16 @@ Quy tắc:
 8. Yêu cầu nằm ngoài khả năng của các tool, hoặc chỉ là trò chuyện: KHÔNG gọi tool nào.
 9. Khi đã làm xong mọi việc, trả lời một câu ngắn và không gọi tool nữa."""
 
+# Keep the baseline string untouched: the candidate rewrites only four numbered rules.
+_PROMPT_V2_RULES = {
+    "1.": "1. Chỉ thực hiện các hành động được yêu cầu trong câu hiện tại; hoàn tất TẤT CẢ các hành động đó trước khi trả lời.",
+    "7.": "7. Tra cứu trước nếu có tool phù hợp; nếu còn mơ hồ giữa nhiều kết quả hoặc thiếu giá trị bắt buộc, gọi sys.ask_missing_info với tool_name và params còn thiếu.",
+    "8.": "8. Câu chỉ trò chuyện hoặc ngoài khả năng tool: trả lời ngắn, KHÔNG gọi tool, kể cả tool tra cứu hay sys.ask_missing_info.",
+    "9.": "9. Trước khi kết thúc, kiểm từng việc trong câu hiện tại đã làm xong hoặc đã hỏi thiếu; không dừng ngay sau bước tra cứu.",
+}
+_SYSTEM_V2 = "\n".join(_PROMPT_V2_RULES.get(line.partition(" ")[0], line)
+                       for line in _SYSTEM.split("\n"))
+
 _RESULT_CHARS = 6_000
 
 _WEEKDAYS = ("thứ Hai", "thứ Ba", "thứ Tư", "thứ Năm", "thứ Sáu", "thứ Bảy", "Chủ nhật")
@@ -107,7 +117,8 @@ def _rejection(reason: str) -> dict:
 def build_messages(request: PlannerInput) -> list[dict]:
     sample = request.sample
     context = sample.context or {}
-    system = (f"{_SYSTEM}\n\nThời gian hiện tại: {context.get('current_time')} ({context.get('timezone')})\n"
+    prompt = _SYSTEM_V2 if os.environ.get("LIFEMATE_PROMPT_V2") == "1" else _SYSTEM
+    system = (f"{prompt}\n\nThời gian hiện tại: {context.get('current_time')} ({context.get('timezone')})\n"
               f"Vị trí: {_dump(context.get('location'))}\nHồ sơ người dùng: {_dump(context.get('user_profile'))}")
     if os.environ.get("LIFEMATE_DATE_TABLE") == "1":
         date_table = render_date_table(context.get("current_time"))
