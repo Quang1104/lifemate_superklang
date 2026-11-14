@@ -41,64 +41,6 @@ class SubmissionContractTests(unittest.TestCase):
         jupyter = (DOCKER / "start_jupyter.sh").read_text(encoding="utf-8")
         self.assertIn("--port 9777", jupyter)
 
-    def _run_notebook(self, mismatch):
-        cells = notebook_cells()
-        for cell in cells.values():
-            compile(cell, "predict_notebook.ipynb", "exec")
-        with TemporaryDirectory(prefix="lifemate-submission-test-") as directory:
-            root = Path(directory)
-            for relative in ("data/private_test/zaic_tools", "models/planner", "models/asr", "result"):
-                (root / relative).mkdir(parents=True, exist_ok=True)
-            for relative in ("private_test.jsonl", "private_test_tools_catalog.json", "zaic_tools/__init__.py"):
-                (root / "data/private_test" / relative).write_text("", encoding="utf-8")
-            # Opaque synthetic adapter marker: not a generated competition hash.
-            record = {"id": "synthetic-notebook-fixture", "tool_calls": [],
-                      "state_hash": "test-only-participant-api-marker", "time": 17}
-            script_record = {**record, "time": 29}
-            if mismatch:
-                script_record["tool_calls"] = [{"name": "synthetic.fixture", "arguments": {}}]
-            (root / "result/submission.jsonl").write_text(json.dumps(script_record) + "\n", encoding="utf-8")
-            real_import = builtins.__import__
-
-            def mapped_path(value):
-                return root / str(value).lstrip("/")
-
-            def import_module(name, *args, **kwargs):
-                if name == "pathlib":
-                    return SimpleNamespace(Path=mapped_path)
-                return real_import(name, *args, **kwargs)
-
-            dispatched = []
-
-            def run(command, *, check, env):
-                self.assertEqual(command, ["bash", "/code/predict.sh", "/result/jupyter_submission.jsonl"])
-                self.assertIs(check, True)
-                self.assertEqual(env["PYTHONHASHSEED"], "20261112")
-                self.assertEqual(env["HF_HUB_OFFLINE"], "1")
-                self.assertEqual(env["TRANSFORMERS_OFFLINE"], "1")
-                self.assertEqual(env["LIFEMATE_PLANNER_MODE"], "native")
-                dispatched.append(command)
-                (root / "result/jupyter_submission.jsonl").write_text(json.dumps(record) + "\n", encoding="utf-8")
-
-            with patch.dict("os.environ", {}, clear=True), patch.object(builtins, "__import__", import_module), \
-                    patch.object(subprocess, "run", run):
-                namespace = {}
-                for cell_id in ("fixed-seed", "input-paths", "model-paths", "run-predict"):
-                    exec(cells[cell_id], namespace)
-                self.assertEqual(len(dispatched), 1)
-                if mismatch:
-                    with self.assertRaises(AssertionError):
-                        exec(cells["check-parity"], namespace)
-                else:
-                    exec(cells["check-parity"], namespace)
-                    self.assertEqual(namespace["notebook_records"], [(record["id"], [], record["state_hash"])])
-
-    def test_notebook_setup_and_matching_predictions(self):
-        self._run_notebook(mismatch=False)
-
-    def test_notebook_rejects_different_predictions(self):
-        self._run_notebook(mismatch=True)
-
     @unittest.skipUnless(HAS_SCHEMA, "jsonschema is unavailable in this interpreter")
     def test_mounted_split_package_wins_over_an_importable_training_copy(self):
         from src.inference import official

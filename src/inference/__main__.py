@@ -8,9 +8,9 @@ import math
 from pathlib import Path
 from statistics import mean
 import sys
-from time import monotonic
 
 from ..agent.runner import Limits
+from .api import ModelHandle, load_models
 from .mock import run_mock
 from .official import KitError, OfficialKit
 from .paths import safe_path
@@ -81,7 +81,7 @@ def _model_timing_summary(samples: list[dict]) -> dict:
                                             for value in sample["grammar_compile_ms"])}
 
 
-def _run_official(args: argparse.Namespace) -> dict:
+def _run_official(args: argparse.Namespace, *, models: ModelHandle | None = None) -> dict:
     train = args.split == "train"
     if not math.isfinite(args.time_scale) or args.time_scale < 1:
         raise KitError("The time scale must be a finite number of at least 1")
@@ -106,41 +106,20 @@ def _run_official(args: argparse.Namespace) -> dict:
     limits = replace(defaults, sample_seconds=defaults.sample_seconds * args.time_scale,
                      planner_seconds=defaults.planner_seconds * args.time_scale,
                      tool_seconds=defaults.tool_seconds * args.time_scale)
-    planner_factory = None
-    parameter_counts = None
-    gpu = None
-    load_started = monotonic()
-    if args.control_noop:
-        def planner(_):
-            return '{"action":"finish","reply":""}'
-
-        transcribe = None
-    else:
-        from ..agent.local_model import LocalPlanner, LocalWhisper, initialize_runtime
-
-        initialize_runtime()
-        planner = LocalPlanner(args.model_dir, device=args.device)
-        transcribe = LocalWhisper(args.asr_dir, device=args.device) if args.asr_dir else None
-        parameter_counts = {"planner": planner.parameter_count,
-                            "asr": transcribe.parameter_count if transcribe else 0}
-        if parameter_counts["planner"] >= 5_000_000_000:
-            raise KitError("The planner must contain fewer than five billion parameters")
-        if sum(parameter_counts.values()) >= 6_000_000_000:
-            raise KitError("Combined models must contain fewer than six billion parameters")
-        if args.planner_mode == "compiled":
-            from ..agent.compiled_plan import CompiledPlanner
-
-            planner_factory = CompiledPlanner(planner.generate, tool_limit=limits.max_steps - 1,
-                                              constrain=True).for_sample
-        if args.planner_mode == "native":
-            from ..agent.native_planner import NativePlanner
-
-            planner_factory = NativePlanner(planner.chat).for_sample
-        if args.device.startswith("cuda"):
-            import torch
-
-            gpu = torch.cuda
-    load_ms = int((monotonic() - load_started) * 1_000)
+    if models is None:
+        models = load_models(args.model_dir, args.asr_dir, device=args.device,
+                             planner_mode=args.planner_mode, control_noop=args.control_noop,
+                             limits=limits)
+    elif (models.model_dir != args.model_dir or models.asr_dir != args.asr_dir
+          or models.device != args.device or models.planner_mode != args.planner_mode
+          or models.control_noop != args.control_noop or models.limits != limits):
+        raise KitError("Loaded models do not match the inference configuration")
+    planner = models.planner
+    transcribe = models.transcribe
+    planner_factory = models.planner_factory
+    parameter_counts = models.parameter_counts
+    gpu = models.gpu
+    load_ms = models.load_ms
     statuses: Counter[str] = Counter()
     timings = []
     details = []
