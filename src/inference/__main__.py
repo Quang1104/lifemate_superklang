@@ -64,7 +64,10 @@ def _sample_model_timings(planner, transcribe) -> dict:
     audio = asr_snapshot() if callable(asr_snapshot) else []
     fields = ("prompt_tokens", "generated_tokens", "reused_prefix_tokens",
               "grammar_compile_ms", "generate_ms", "grammar_status")
-    return {"asr_ms": sum(row["asr_ms"] for row in audio), "planner_calls": len(calls),
+    probed = [row["call_prob"] for row in calls if "call_prob" in row]  # only with LIFEMATE_ABSTAIN_PROBE=1
+    abstain = {"abstain_call_prob": probed[0],
+               "abstain_forced": any(row.get("forced_prefix") for row in calls)} if probed else {}
+    return {**abstain, "asr_ms": sum(row["asr_ms"] for row in audio), "planner_calls": len(calls),
             "asr_timing_complete": all(row.get("timing_complete", True) for row in audio),
             "timing_complete": [row.get("timing_complete", True) for row in calls],
             **{field: [row[field] for row in calls] for field in fields}}
