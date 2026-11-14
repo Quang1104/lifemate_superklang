@@ -304,6 +304,19 @@ class _GrammarLogits:
             return scores
 
 
+class _FirstTokenProbe:
+    """Read one token's probability at the first generated position; scores pass through unchanged."""
+
+    def __init__(self, token_id: int):
+        self._token_id = token_id
+        self.probability: float | None = None
+
+    def __call__(self, input_ids, scores):
+        if self.probability is None:
+            self.probability = float(scores[0].float().softmax(-1)[self._token_id])
+        return scores
+
+
 class LocalPlanner:
     """Generate next-action or compiled-plan JSON with a local Qwen checkpoint."""
 
@@ -400,22 +413,28 @@ class LocalPlanner:
         return self._generate(system, user, max_tokens=1_536, deadline=deadline, json_schema=json_schema)
 
     def chat(self, messages: list[dict], tools: list[dict], *, max_tokens: int = 384,
-             deadline: float | None = None) -> str:
-        """Generate the next assistant turn in the checkpoint's own tool-calling chat format."""
-        return self._generate("", "", max_tokens=max_tokens, deadline=deadline, messages=messages, tools=tools)
+             deadline: float | None = None, probe: dict | None = None, prefix: str = "") -> str:
+        """Generate the next assistant turn in the checkpoint's own tool-calling chat format.
+
+        A `probe` dict receives `call_prob`, the probability that the turn opens with <tool_call>.
+        A `prefix` forces how the turn starts and is included in the returned text.
+        """
+        return self._generate("", "", max_tokens=max_tokens, deadline=deadline, messages=messages, tools=tools,
+                              probe=probe, prefix=prefix)
 
     def _generate(self, system: str, user: str, *, max_tokens: int, deadline: float | None,
                   json_schema: dict | None = None, messages: list[dict] | None = None,
-                  tools: list[dict] | None = None) -> str:
+                  tools: list[dict] | None = None, probe: dict | None = None, prefix: str = "") -> str:
         if not hasattr(self, "generation_metrics"):
             self.reset_metrics()
         metrics = {"prompt_tokens": 0, "generated_tokens": 0, "reused_prefix_tokens": 0,
                    "grammar_compile_ms": 0.0, "generate_ms": 0.0, "grammar_status": "unconstrained",
-                   "timing_complete": False}
+                   "timing_complete": False, **({"forced_prefix": True} if prefix else {})}
         self.generation_metrics.append(metrics)
         try:
             return self._generate_timed(system, user, max_tokens=max_tokens, deadline=deadline,
-                                        json_schema=json_schema, metrics=metrics, messages=messages, tools=tools)
+                                        json_schema=json_schema, metrics=metrics, messages=messages, tools=tools,
+                                        probe=probe, prefix=prefix)
         finally:
             started = metrics.get("_generate_started")
             if started is not None:
@@ -426,7 +445,7 @@ class LocalPlanner:
 
     def _generate_timed(self, system: str, user: str, *, max_tokens: int, deadline: float | None,
                         json_schema: dict | None, metrics: dict, messages: list[dict] | None = None,
-                        tools: list[dict] | None = None) -> str:
+                        tools: list[dict] | None = None, probe: dict | None = None, prefix: str = "") -> str:
         _check_deadline(deadline)
         native = messages is not None
         # Data may contain literal Qwen role delimiters. Escaping the opening
@@ -440,6 +459,12 @@ class LocalPlanner:
             messages, add_generation_prompt=True, tokenize=True, return_dict=True,
             return_tensors="pt", enable_thinking=False, **({"tools": tools} if tools else {}),
         )
+        if prefix:
+            # The assistant turn is already open; generation continues after these tokens.
+            forced = self._tokenizer(prefix, add_special_tokens=False, return_tensors="pt")["input_ids"]
+            inputs["input_ids"] = self._torch.cat([inputs["input_ids"], forced], dim=-1)
+            inputs["attention_mask"] = self._torch.cat(
+                [inputs["attention_mask"], self._torch.ones_like(forced)], dim=-1)
         prompt_tokens = inputs["input_ids"].shape[-1]
         metrics["prompt_tokens"] = prompt_tokens
         with _generation(self._torch, self._device, deadline, on_error=self._prefix_cache.clear):
@@ -461,10 +486,16 @@ class LocalPlanner:
                     options["past_key_values"] = past
                     metrics["reused_prefix_tokens"] = past.get_seq_length()
                 processor = self._grammar_processor(json_schema, metrics=metrics)
-                if processor is not None:
+                watch = None
+                if probe is not None:
+                    call_id = self._tokenizer.convert_tokens_to_ids("<tool_call>")
+                    if type(call_id) is int and self._tokenizer.convert_ids_to_tokens(call_id) == "<tool_call>":
+                        watch = _FirstTokenProbe(call_id)
+                processors = [item for item in (watch, processor) if item is not None]
+                if processors:
                     from transformers import LogitsProcessorList
 
-                    options["logits_processor"] = LogitsProcessorList([processor])
+                    options["logits_processor"] = LogitsProcessorList(processors)
                 _check_deadline(deadline)
                 # HF receives the full IDs and mask, preserving length limits and
                 # logits processors. It slices off cached IDs before model prefill.
@@ -480,7 +511,9 @@ class LocalPlanner:
                 )
                 if native:
                     text = text.split("<|im_end|>")[0].split("<|endoftext|>")[0]
-                text = text.strip()
+                text = prefix + text.strip()
+                if watch is not None and watch.probability is not None:
+                    metrics["call_prob"] = probe["call_prob"] = watch.probability
                 if self._reuse_prefix_cache:
                     self._prefix_cache.remember(token_ids, getattr(outputs, "past_key_values", None), input_key)
                 return text

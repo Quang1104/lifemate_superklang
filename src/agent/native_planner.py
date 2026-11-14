@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 import json
 import os
 
+from .fewshot import native_examples, native_k
 from .planner import PlannerInput
 
 _SYSTEM = """Bạn là LifeMate, trợ lý giọng nói tiếng Việt điều khiển các ứng dụng của người dùng bằng tool.
@@ -114,6 +115,19 @@ def _rejection(reason: str) -> dict:
     return {"ok": False, "error": reason, **({"hint": hints[0]} if hints else {})}
 
 
+def render_examples(examples: list[dict]) -> str:
+    """Retrieved TRAIN requests with the calls that solved them, as plain prompt text.
+
+    Kept out of the chat turns so rule 3 (do not redo history) does not apply to them.
+    """
+    lines = ["Ví dụ yêu cầu tương tự và các lệnh đã dùng (chỉ tham khảo cách chọn tool và thứ tự; "
+             "giá trị và ID phải lấy từ yêu cầu hiện tại và kết quả tool):"]
+    for item in examples:
+        calls = "; ".join(call["name"] + _dump(call["arguments"]) for call in item["calls"])
+        lines.append(f"- {_dump(item['request'])} → {calls or 'không gọi tool nào'}")
+    return "\n".join(lines)
+
+
 def build_messages(request: PlannerInput) -> list[dict]:
     sample = request.sample
     context = sample.context or {}
@@ -124,7 +138,13 @@ def build_messages(request: PlannerInput) -> list[dict]:
         date_table = render_date_table(context.get("current_time"))
         if date_table:
             system += "\n\n" + date_table
-    messages = [{"role": "system", "content": system}]
+    k = native_k()
+    if k > 0:
+        # Same selection and text when scripts/build_sft.py --fewshot-k builds the training prompts.
+        examples = native_examples().select(sample, {tool["name"] for tool in request.tools}, k)
+        if examples:
+            system += "\n\n" + render_examples(examples)
+    messages =[{"role": "system", "content": system}]
     for raw in sample.history:
         try:
             turn = json.loads(raw)
@@ -156,6 +176,13 @@ def _key(name: str, arguments: dict) -> tuple[str, str]:
     return name, json.dumps(arguments, ensure_ascii=False, sort_keys=True)
 
 
+def _abstain_threshold() -> float | None:
+    """None unless LIFEMATE_ABSTAIN_PROBE=1. The default threshold (inf) only records the probability."""
+    if os.environ.get("LIFEMATE_ABSTAIN_PROBE") != "1":
+        return None
+    return float(os.environ.get("LIFEMATE_ABSTAIN_THRESHOLD", "inf"))
+
+
 class NativePlanner:
     """Per-sample planner; queues parallel tool calls so one generation can drive several steps."""
 
@@ -172,8 +199,18 @@ class NativePlanner:
         if observations and observations[-1].kind == "rejected":
             self._queue.clear()  # Later queued calls may depend on the rejected one; replan with its feedback.
         if not self._queue:
-            text = self._chat(build_messages(request), tool_definitions(request.tools),
-                              max_tokens=self._max_tokens, deadline=request.deadline)
+            messages, tools = build_messages(request), tool_definitions(request.tools)
+            threshold = None if observations else _abstain_threshold()  # only the first decision of a sample
+            probe = None if threshold is None else {}
+            text = self._chat(messages, tools, max_tokens=self._max_tokens, deadline=request.deadline,
+                              **({} if probe is None else {"probe": probe}))
+            if probe and not parse_calls(text) and probe.get("call_prob", 0.0) >= threshold:
+                # The model stopped without acting although a tool call was likely enough: make it commit to one.
+                try:
+                    text = self._chat(messages, tools, max_tokens=self._max_tokens, deadline=request.deadline,
+                                      prefix="<tool_call>\n")
+                except TimeoutError:
+                    pass  # No time left for a second opinion: keep the first answer.
             attempted = {_key(item.tool, item.arguments or {}) for item in observations if item.tool}
             # A repeated call means the model has nothing new to do; stopping beats looping.
             for name, arguments in parse_calls(text):

@@ -16,6 +16,8 @@ from ..inference.types import Sample
 from .plan_values import normalized
 
 POOL = Path(__file__).with_name("data") / "fewshot_plans.jsonl"
+# Gold calls of the same TRAIN IDs for the native planner prompt; written by scripts/build_sft.py --fewshot-k.
+NATIVE_POOL = POOL.with_name("fewshot_native.jsonl")
 DEFAULT_K = 2
 DEFAULT_BUDGET = 3_000  # characters of compact JSON for all examples together
 
@@ -35,7 +37,8 @@ def _compact(value) -> str:
 class Examples:
     def __init__(self, rows: list[dict]) -> None:
         self._rows = [(row, _words(row["transcript"]), frozenset(row["apps"]),
-                       frozenset(step["tool"] for step in row["plan"]["steps"])) for row in rows]
+                       frozenset(step["tool"] for step in row["plan"]["steps"]) if "plan" in row
+                       else frozenset(call["name"] for call in row["calls"])) for row in rows]
 
     @classmethod
     def load(cls, path: Path = POOL, allowed_ids: frozenset[str] | None = None) -> "Examples":
@@ -59,7 +62,7 @@ class Examples:
         )
         chosen, used, transcripts = [], 0, set()
         for _, _, row in ranked:
-            item = {"request": row["transcript"], "plan": row["plan"]}
+            item = {"request": row["transcript"], **{key: row[key] for key in ("plan", "calls") if key in row}}
             size = len(_compact(item))
             if used + size > budget or row["transcript"] in transcripts:
                 continue
@@ -72,11 +75,11 @@ class Examples:
 
 
 @lru_cache(maxsize=4)
-def configured(split: str | None = None) -> Examples:
+def configured(split: str | None = None, path: Path = POOL) -> Examples:
     allowed = None
     if split:
         allowed = frozenset(json.loads(Path(split).read_text(encoding="utf-8"))["train_ids"])
-    return Examples.load(POOL, allowed)
+    return Examples.load(path, allowed)
 
 
 def default_k() -> int:
@@ -85,3 +88,12 @@ def default_k() -> int:
 
 def default_examples() -> Examples:
     return configured(os.environ.get("LIFEMATE_FEWSHOT_SPLIT") or None)
+
+
+def native_k() -> int:
+    """Examples in the native planner prompt; off unless LIFEMATE_NATIVE_FEWSHOT_K is a positive number."""
+    return int(os.environ.get("LIFEMATE_NATIVE_FEWSHOT_K") or 0)
+
+
+def native_examples() -> Examples:
+    return configured(os.environ.get("LIFEMATE_FEWSHOT_SPLIT") or None, NATIVE_POOL)
