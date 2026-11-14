@@ -1,111 +1,75 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-Build and export the LifeMate release for 2026-11-15.
+Build and export the LifeMate image. Base planner and ASR weights are downloaded inside the build
+(pinned revisions in configs/colab_models.json) and the QLoRA adapter is merged there, so the only
+local input is the adapter folder (~130 MB).
 .EXAMPLE
-powershell.exe -NoProfile -File .\docker\release.ps1 -PlannerDir C:\models\planner-merged -AsrDir C:\models\phowhisper-medium
+powershell.exe -NoProfile -File .\docker\release.ps1 -CheckOnly
+powershell.exe -NoProfile -File .\docker\release.ps1 -AdapterDir C:\lifemate_release\qlora_native
+Undo everything this script created with docker\cleanup.ps1 (see docker\LOCAL_DISK_NOTES.md).
 #>
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true)]
-    [ValidateNotNullOrEmpty()]
-    [string]$PlannerDir,
-
-    [Parameter(Mandatory = $true)]
-    [ValidateNotNullOrEmpty()]
-    [string]$AsrDir,
-
-    [ValidateNotNullOrEmpty()]
+    [string]$AdapterDir,
     [string]$ImageTag = 'lifemate:2026-11-15',
-
-    [ValidateNotNullOrEmpty()]
-    [string]$OutputTar = (Join-Path $PSScriptRoot 'lifemate-2026-11-15.tar')
+    # Outside the repo: the repo lives in OneDrive and a 15+ GB archive must not be synced.
+    [string]$OutputArchive = (Join-Path $env:USERPROFILE 'lifemate_release\lifemate-2026-11-15.tar.gz'),
+    [switch]$CheckOnly
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-
-function Resolve-ModelDirectory {
-    param(
-        [string]$Path,
-        [string]$Label
-    )
-
-    # Never traverse model trees; the selected directory is the build context.
-    if ($Path -split '[\\/]' | Where-Object { $_ -eq 'state.json' -or $_ -like '*_environment' }) {
-        throw "$Label path contains a forbidden component."
-    }
-    $resolved = (Resolve-Path -LiteralPath $Path -ErrorAction Stop).ProviderPath
-    if ($resolved -split '[\\/]' | Where-Object { $_ -eq 'state.json' -or $_ -like '*_environment' }) {
-        throw "$Label path contains a forbidden component."
-    }
-    if (-not (Test-Path -LiteralPath $resolved -PathType Container)) {
-        throw "$Label must be a directory: $resolved"
-    }
-    $config = Join-Path $resolved 'config.json'
-    if (-not (Test-Path -LiteralPath $config -PathType Leaf)) {
-        throw "$Label lacks config.json: $resolved"
-    }
-    $weights = @(Get-ChildItem -LiteralPath $resolved -File -Filter '*.safetensors')
-    if ($weights.Count -eq 0) {
-        throw "$Label lacks safetensors weights: $resolved"
-    }
-    return $resolved
+$repo = Split-Path -Parent $PSScriptRoot
+$stateFile = Join-Path $env:USERPROFILE 'lifemate_release\release-state.json'
+# Estimate, not measured: image ~21 GB plus a compressed archive and transient download space.
+$neededGB = 40
+$dockerDrive = (Get-Item -LiteralPath $env:LOCALAPPDATA).PSDrive.Name
+$freeGB = [math]::Round((Get-PSDrive -Name $dockerDrive).Free / 1GB, 1)
+Write-Output "Free space on ${dockerDrive}: $freeGB GB; estimated peak need: $neededGB GB."
+if ($CheckOnly) { exit 0 }
+if ($freeGB -lt $neededGB) {
+    throw "Need about $neededGB GB free on ${dockerDrive}: before building; found $freeGB GB."
 }
+if (-not $AdapterDir) { throw 'Pass -AdapterDir <folder with adapter_config.json and adapter_model.safetensors>.' }
+$adapter = (Resolve-Path -LiteralPath $AdapterDir).Path
+foreach ($name in @('adapter_config.json', 'adapter_model.safetensors')) {
+    if (-not (Test-Path -LiteralPath (Join-Path $adapter $name) -PathType Leaf)) {
+        throw "Adapter folder is missing $name"
+    }
+}
+if (Test-Path -LiteralPath $OutputArchive) { throw "Refusing to overwrite $OutputArchive" }
+& docker info --format '{{.ServerVersion}}' | Out-Null
+if ($LASTEXITCODE -ne 0) { throw 'Docker is not running: start Docker Desktop first.' }
 
-$plannerPath = Resolve-ModelDirectory -Path $PlannerDir -Label 'Merged planner'
-$asrPath = Resolve-ModelDirectory -Path $AsrDir -Label 'ASR'
-$repoRoot = Split-Path -Parent $PSScriptRoot
-$dockerfile = Join-Path $PSScriptRoot 'Dockerfile'
-$tarPath = [System.IO.Path]::GetFullPath($OutputTar)
-if ([System.IO.Path]::GetExtension($tarPath) -ine '.tar') {
-    throw 'OutputTar must end in .tar.'
-}
-$md5Path = "$tarPath.md5"
-if ((Test-Path -LiteralPath $tarPath) -or (Test-Path -LiteralPath $md5Path)) {
-    throw "Refusing to overwrite an existing archive or checksum: $tarPath"
-}
-Get-Command docker -CommandType Application -ErrorAction Stop | Out-Null
-$tarParent = Split-Path -Parent $tarPath
-if (-not (Test-Path -LiteralPath $tarParent -PathType Container)) {
-    New-Item -ItemType Directory -Path $tarParent -ErrorAction Stop | Out-Null
-}
+# Remember the images that already existed so cleanup.ps1 only removes what this release added.
+New-Item -ItemType Directory -Force -Path (Split-Path -Parent $OutputArchive) | Out-Null
+$imagesBefore = @(& docker image ls --quiet --no-trunc)
+@{ image = $ImageTag; archive = $OutputArchive; images_before = $imagesBefore
+   started = (Get-Date).ToString('s') } | ConvertTo-Json | Set-Content -LiteralPath $stateFile -Encoding UTF8
 
-$buildArguments = @(
-    'build',
-    '--file', $dockerfile,
-    '--build-context', "planner_weights=$plannerPath",
-    '--build-context', "asr_weights=$asrPath",
-    '--tag', $ImageTag,
-    $repoRoot
-)
+$buildArguments = @('build', '--file', (Join-Path $PSScriptRoot 'Dockerfile'),
+    '--build-context', "adapter=$adapter", '--tag', $ImageTag, $repo)
 & docker @buildArguments
-if ($LASTEXITCODE -ne 0) {
-    throw "docker build failed with exit code $LASTEXITCODE."
-}
+if ($LASTEXITCODE -ne 0) { throw "docker build failed with exit code $LASTEXITCODE" }
 
-& docker save --output $tarPath $ImageTag
-if ($LASTEXITCODE -ne 0) {
-    throw "docker save failed with exit code $LASTEXITCODE; no checksum was written."
+# Stream `docker save` through .NET gzip: PowerShell 5.1 pipes corrupt binary data, and an
+# intermediate .tar would double the disk needed.
+$startInfo = New-Object System.Diagnostics.ProcessStartInfo 'docker', "save $ImageTag"
+$startInfo.RedirectStandardOutput = $true
+$startInfo.UseShellExecute = $false
+$process = [System.Diagnostics.Process]::Start($startInfo)
+$file = [System.IO.File]::Create($OutputArchive)
+$gzip = New-Object System.IO.Compression.GZipStream($file, [System.IO.Compression.CompressionLevel]::Fastest)
+try { $process.StandardOutput.BaseStream.CopyTo($gzip) } finally { $gzip.Dispose(); $file.Dispose() }
+$process.WaitForExit()
+if ($process.ExitCode -ne 0) {
+    Remove-Item -LiteralPath $OutputArchive -Force
+    throw "docker save failed with exit code $($process.ExitCode); no archive kept."
 }
-if (-not (Test-Path -LiteralPath $tarPath -PathType Leaf)) {
-    throw 'docker save did not create the archive; no checksum was written.'
-}
-
-$checksum = Get-FileHash -LiteralPath $tarPath -Algorithm MD5
-$checksumLine = '{0}  {1}' -f $checksum.Hash.ToLowerInvariant(), [System.IO.Path]::GetFileName($tarPath)
-Set-Content -LiteralPath $md5Path -Value $checksumLine -Encoding Ascii
-
-$imageSizeOutput = & docker image inspect --format '{{.Size}}' $ImageTag
-if ($LASTEXITCODE -ne 0) {
-    throw "docker image inspect failed with exit code $LASTEXITCODE."
-}
-[long]$imageBytes = 0
-if (-not [long]::TryParse(($imageSizeOutput -join '').Trim(), [ref]$imageBytes)) {
-    throw 'docker image inspect returned an invalid image size.'
-}
-Write-Output ("Image: {0}" -f $ImageTag)
-Write-Output ("Image size: {0} bytes ({1:N2} GiB)" -f $imageBytes, ($imageBytes / 1GB))
-Write-Output ("Archive: {0}" -f $tarPath)
-Write-Output ("MD5: {0}" -f $checksum.Hash.ToLowerInvariant())
-Write-Output ("Checksum file: {0}" -f $md5Path)
+$md5 = (Get-FileHash -LiteralPath $OutputArchive -Algorithm MD5).Hash.ToLowerInvariant()
+"$md5  $(Split-Path -Leaf $OutputArchive)" | Set-Content -LiteralPath "$OutputArchive.md5" -Encoding Ascii
+$imageGB = [math]::Round([double](& docker image inspect $ImageTag --format '{{.Size}}') / 1GB, 2)
+$archiveGB = [math]::Round((Get-Item -LiteralPath $OutputArchive).Length / 1GB, 2)
+Write-Output "Image $($ImageTag): $imageGB GB. Archive: $OutputArchive ($archiveGB GB), MD5 $md5"
+Write-Output 'Load it elsewhere with: docker load -i <archive>   (gzip archives load directly)'

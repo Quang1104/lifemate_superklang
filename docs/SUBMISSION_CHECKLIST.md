@@ -30,7 +30,7 @@
 | 24 | Download link truy cập được | NOT MEASURED | Chưa export/upload, chưa có link để kiểm chứng. [docker/README.md:15](../docker/README.md#L15). |
 Tổng 24 dòng: PASS 12; FIXED 6; FAIL/TODO 0; NOT MEASURED 6.
 
-Release ngày 2026-11-15: đã chuẩn bị [docker/release.ps1](../docker/release.ps1) tương thích PowerShell 5.1. Script yêu cầu merged planner và ASR đều có config.json + safetensors, dùng đúng named contexts planner_weights/asr_weights, từ chối ghi đè archive/checksum, build → save tar → MD5 thật → in image size. Chỉ parse/test tĩnh, **chưa chạy script**; các dòng 18, 21–24 vẫn NOT MEASURED.
+Release ngày 2026-11-15: [docker/release.ps1](../docker/release.ps1) chỉ nhận thư mục adapter; Docker tải planner gốc + ASR đúng revision và merge bằng `training_code/stream_merge.py` (bằng từng bit với `merge_lora.py`, test `tests/test_stream_merge.py`) trong lúc build, xuất `.tar.gz` + MD5 ra ngoài OneDrive; [docker/cleanup.ps1](../docker/cleanup.ps1) trả lại dung lượng ([ghi chú](../docker/LOCAL_DISK_NOTES.md)). Chỉ test tĩnh, **chưa chạy**; các dòng 18, 21–24 vẫn NOT MEASURED.
 
 Kiểm chứng phiên này với đúng interpreter: unittest thu thập 12 test, 11 qua, 1 skip (jsonschema), exit 0, nguyên văn `Ran 12 tests in 0.592s` / `OK (skipped=1)`. Hai lệnh bắt buộc pytest và mock40 đều exit 1 vì thiếu pytest/jsonschema; full suite, mock40 và parity API/CLI qua pipeline là **NOT MEASURED**. Lệnh, stdout/stderr nguyên văn và Get-Date sau mỗi task ở [docker/VERIFICATION_2026-11-14.md](../docker/VERIFICATION_2026-11-14.md). Không dùng số pass/score từ phiên cũ cho kết quả hiện tại.
 

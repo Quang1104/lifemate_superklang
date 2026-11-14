@@ -9,6 +9,7 @@
 !docker/start_jupyter.sh
 !docker/predict_notebook.ipynb
 !docker/README.md
+!docker/fetch_models.py
 !scripts/
 !scripts/build_sft.py
 !research/

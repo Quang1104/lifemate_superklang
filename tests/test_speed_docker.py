@@ -30,4 +30,5 @@ def test_docker_and_notebook_share_native_planner_defaults():
     assert "run_private_test(models" in code and "planner_mode=os.environ['LIFEMATE_PLANNER_MODE']" in code
     dockerfile = (docker_dir / "Dockerfile").read_text(encoding="utf-8")
     assert "ARG PLANNER_MODE=native" in dockerfile
-    assert f"COPY --from=planner_weights . {model_dir}/" in dockerfile
+    fetch = (docker_dir / "fetch_models.py").read_text(encoding="utf-8")
+    assert f'planner: str = "{model_dir}"' in fetch and "fetch_models.py /tmp/adapter" in dockerfile

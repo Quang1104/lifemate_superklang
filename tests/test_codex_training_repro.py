@@ -77,9 +77,11 @@ class TrainingReproducibilityTests(unittest.TestCase):
             self.assertIn(externally_supplied, readme)
         self.assertIn("đầu vào ngoài image", readme)
         self.assertIn("sản phẩm được tạo, không phải file được COPY", readme)
-        model_destinations = {destination.as_posix() for context, _, destination, _ in copy_rules()
-                              if context is not None}
-        self.assertEqual(model_destinations, {"/models/planner", "/models/asr"})
+        # Weights are not copied from build contexts any more: fetch_models.py downloads the pinned
+        # base/ASR and merges the adapter (bind-mounted) inside the build.
+        self.assertEqual({destination.as_posix() for context, _, destination, _ in copy_rules()
+                          if context is not None}, set())
+        self.assertIn("fetch_models.py /tmp/adapter", (ROOT / "docker" / "Dockerfile").read_text(encoding="utf-8"))
 
     def test_builder_repo_imports_are_copied_without_other_scripts(self):
         tree = ast.parse((ROOT / "scripts" / "build_sft.py").read_text(encoding="utf-8"))

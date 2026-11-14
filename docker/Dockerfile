@@ -14,14 +14,16 @@ COPY pyproject.toml ./
 COPY docker/README.md ./README.md
 COPY src ./src
 RUN pip install --no-cache-dir '.[model]' 'jupyterlab>=4.4,<5' peft bitsandbytes
-COPY --from=planner_weights . /models/planner/
-COPY --from=asr_weights . /models/asr/
+COPY configs/colab_models.json ./configs/colab_models.json
+COPY training_code ./training_code
+COPY docker/fetch_models.py ./fetch_models.py
+# Pinned base planner + ASR are fetched at build time and the QLoRA adapter is merged in the same
+# step, so neither the base checkpoint nor the adapter (a bind mount) ends up in an image layer.
+RUN --mount=type=bind,from=adapter,target=/tmp/adapter     HF_HUB_OFFLINE=0 TRANSFORMERS_OFFLINE=0 python -B fetch_models.py /tmp/adapter
 COPY --chmod=755 docker/predict.sh docker/start_jupyter.sh ./
 COPY docker/predict_notebook.ipynb ./
-COPY training_code ./training_code
 COPY scripts/build_sft.py ./scripts/build_sft.py
 COPY research/validation_split.json ./research/validation_split.json
-COPY configs/colab_models.json ./configs/colab_models.json
 
 ARG PLANNER_MODE=native
 ENV LIFEMATE_PLANNER_MODE=${PLANNER_MODE}

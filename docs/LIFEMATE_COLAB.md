@@ -22,13 +22,12 @@ Khi cần phân tích lỗi, chạy lại nhánh bị lỗi trên TRAIN với `-
 
 ## Gói Docker để kiểm tra trên máy đích
 
-Chạy từ repo. Truyền hai thư mục weights cục bộ làm build context riêng. Mặc định dùng `PLANNER_MODE=compiled`. Đổi sang `direct` khi đó là bản thắng theo benchmark.
+Chạy từ repo. Chỉ cần thư mục adapter QLoRA; planner gốc và ASR được tải và merge trong lúc build (xem `docker/LOCAL_DISK_NOTES.md`; trên Windows dùng `docker/release.ps1`). Mặc định `PLANNER_MODE=native`.
 
 ```bash
 docker build -f docker/Dockerfile \
-  --build-context planner_weights=/path/to/planner \
-  --build-context asr_weights=/path/to/asr \
-  --build-arg PLANNER_MODE=compiled -t lifemate:validated .
+  --build-context adapter=/path/to/qlora_native \
+  -t lifemate:validated .
 
 docker run --rm --gpus all --network none \
   -v /path/to/kit-root:/data:ro -v /path/to/result:/result \
