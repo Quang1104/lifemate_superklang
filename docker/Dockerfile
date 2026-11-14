@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM nvidia/cuda:13.2.0-runtime-ubuntu24.04
+FROM nvidia/cuda:13.2.0-runtime-ubuntu24.04 AS deps
 
 ENV PATH="/opt/lifemate/bin:${PATH}" \
     HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 PYTHONDONTWRITEBYTECODE=1 \
@@ -15,6 +15,8 @@ COPY pyproject.toml ./
 COPY docker/README.md ./README.md
 COPY src ./src
 RUN --mount=type=cache,target=/root/.cache/pip pip install --retries 10 --timeout 60 '.[model]' 'jupyterlab>=4.4,<5' peft bitsandbytes
+# Everything above is independent of the adapter; `docker build --target deps` pre-builds it.
+FROM deps
 COPY configs/colab_models.json ./configs/colab_models.json
 COPY training_code ./training_code
 COPY docker/fetch_models.py ./fetch_models.py
