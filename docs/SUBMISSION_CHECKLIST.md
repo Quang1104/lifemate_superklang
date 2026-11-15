@@ -52,7 +52,11 @@ ghi vào `<archive>.manifest.json` cùng SHA256 của adapter, SHA256 của ASR 
 |---|---|
 | v3 + ASR fine-tune | `powershell.exe -NoProfile -File .\docker\release.ps1 -AdapterDir <adapter v3>` |
 | v4 | `powershell.exe -NoProfile -File .\docker\release.ps1 -AdapterDir <adapter v4> -Flags "LIFEMATE_CONTEXT_V4=1,LIFEMATE_SMALL_FIXES=1"` |
-| v5 | `powershell.exe -NoProfile -File .\docker\release.ps1 -AdapterDir <adapter v5> -Flags "LIFEMATE_CONTEXT_V4=1,LIFEMATE_SMALL_FIXES=1,LIFEMATE_DATE_TABLE=1"` |
+| v5 (smoke 50.19 < v4, bỏ) | `powershell.exe -NoProfile -File .\docker\release.ps1 -AdapterDir <adapter v5> -Flags "LIFEMATE_CONTEXT_V4=1,LIFEMATE_SMALL_FIXES=1,LIFEMATE_DATE_TABLE=1"` |
+| v6 (BASE=v4) | `powershell.exe -NoProfile -File .\docker\release.ps1 -AdapterDir <adapter v6> -Flags "LIFEMATE_CONTEXT_V4=1,LIFEMATE_SMALL_FIXES=1,LIFEMATE_FEWSHOT_GATE=1"` |
+| v4 hoặc v6 + ASR large | Lệnh như dòng tương ứng; `<AdapterDir>\asr` = toàn bộ `lifemate_results/asr_large_ft` thay cho `asr_ft`. Chỉ khi WER val < 9.9% rõ và smoke ≥ 61.29 (`docs/ASR_LARGE.md`). |
+
+Chọn ứng viên theo điểm public cao nhất đã đo (không theo smoke); bản trộn `mixed_v4_v3asrft` chỉ để xem hướng, không đóng gói.
 
 Sau khi build, đối chiếu cờ trong image với manifest: `docker image inspect <tag> --format '{{json .Config.Env}}'`.
 Chưa build image nào với `-Flags`: kích thước, thời gian và kết quả chạy trong container là NOT MEASURED. Trên máy này
