@@ -143,3 +143,10 @@ Brief: `lifemate-orca-ctx-brief.md` (root, 15/11). Chỉ CPU, chỉ viết docs.
 - Kết luận: n-best theo tên, ép giải mã tên tool và hỏi lại khi guard từ chối có trần gần 0 trên smoke40. Beam search cho ASR
   cần đo WER trước (NOT MEASURED). Đổi K lúc suy luận là lệch prompt với model đã train.
 - Tiếp: câu 4.
+
+## R-4 (15/11 18:55): PhoWhisper-large
+
+- Tham số: 4,022,468,096 + ~1.55 tỷ < 6 tỷ (số của large theo kiến trúc, chưa đếm). Ước lượng từ medium (3 epoch 7.5 phút
+  trên G4; 0.51 s/mẫu): train 15–25 phút, ASR 1.0–1.5 s/mẫu. WER của large: NOT MEASURED.
+- Trần trên smoke40: 8.4 điểm (4 mẫu chỉ đúng khi có transcript gold: 0578, 1202, 1095, 1015). Xếp sau các việc về planner.
+- Tiếp: câu 5.
