@@ -134,3 +134,12 @@ Brief: `lifemate-orca-ctx-brief.md` (root, 15/11). Chỉ CPU, chỉ viết docs.
   không bao giờ minh hoạ được tool lạ. Tỷ lệ yêu cầu public nhắm vào tool lạ và độ giống transcript: NOT MEASURED (không có
   transcript). Chưa có phép đo sạch nào về tool chưa thấy: v3/v4 đều train trên cả 171 ID của split leave-app-out.
 - Tiếp: câu 3–5 (ngân sách thời gian, ASR lớn hơn, xử lý dữ liệu).
+
+## R-3 (15/11 18:50): ngân sách thời gian
+
+- Đo trên G4 (v3_asrft): 2.23 s/mẫu trung bình, p95 3.70 s; ASR 0.51 s; sinh 1.68 s cho 3.6 lượt planner; 57.6 token/s;
+  prompt bước 1 trung vị 5,367 token, lớn nhất 8,430. Chỉ 4 mẫu có guard từ chối (5 lần: 2 tool của app không cài, 2 hỏi sai
+  tham số, 1 x-ref).
+- Kết luận: n-best theo tên, ép giải mã tên tool và hỏi lại khi guard từ chối có trần gần 0 trên smoke40. Beam search cho ASR
+  cần đo WER trước (NOT MEASURED). Đổi K lúc suy luận là lệch prompt với model đã train.
+- Tiếp: câu 4.
