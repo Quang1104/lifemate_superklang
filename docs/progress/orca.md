@@ -179,3 +179,9 @@ Brief: `lifemate-orca-ctx-brief.md` (root, 15/11). Chỉ CPU, chỉ viết docs.
   gold ở 11/11 (cả dạng viết hoa lẫn viết thường). Điểm: NOT MEASURED.
 - Test: `python -B -m pytest -q -p no:cacheprovider` → 360 passed, 1 skipped; `python -B -m src.inference mock --samples 40` → 40/40.
 - Tiếp: ghi mục "Đã làm" trong `docs/RESEARCH_NEXT.md`.
+
+## C-2 (15/11): ghi mục "Đã làm" trong `docs/RESEARCH_NEXT.md`
+
+- Đã làm: mô tả cờ, lệnh đo, số đo (0/161 và 11/11), và giới hạn: trên smoke40 chỉ 0131 rơi vào luật (2.5 điểm đang mất),
+  0665 không được sửa, và mẫu được cứu vẫn thừa một lời gọi nên không trọn điểm.
+- Trạng thái: đã commit, chưa push. Root cần thêm `LIFEMATE_CONTACT_RETRY=1` vào lệnh suy luận nếu muốn bật.

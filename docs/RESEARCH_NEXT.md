@@ -95,3 +95,17 @@ Chấp nhận một việc chỉ khi smoke40 tăng ≥ 5 điểm so với bản 
 - Chỉnh thêm `LIFEMATE_DUP_GUARD`, n-best theo tên, ép giải mã tên tool, hỏi lại khi guard từ chối: trần trên smoke40 gần 0.
 - Dòng nháp suy luận trước lệnh ghi: không có dữ liệu train có lời giải.
 - Đổi K hoặc bỏ ví dụ lúc suy luận mà không train lại: lệch prompt với model QLoRA.
+
+## Đã làm (15/11, CPU; điểm: NOT MEASURED)
+
+Việc 3, chỉ bản trung thực: `LIFEMATE_CONTACT_RETRY=1` (mặc định tắt, không cần train). Trong `src/agent/runner.py`, khi
+`contacts.search` trả danh sách rỗng và truy vấn mở đầu bằng từ xưng hô (anh, chị, thầy, ông, sếp, bác, cô, thằng, bà, vợ, mẹ,
+chú, bé: các từ có trong tên liên hệ hoặc câu nói của TRAIN), runner gọi lại `contacts.search` với phần tên còn lại. Lần gọi
+lại là một lời gọi ToolEnv thật, có trong `tool_calls`. Không làm bản "tìm lại bằng tên đã lưu để khớp cách chấm".
+
+- Đo trên 1236 ID train với `contacts.search` thật: `python -B -m scripts.orca_v4_measure contact --data-root <kit>`.
+  Luật kích hoạt trên 0/161 truy vấn gold. Với 11 câu nói "<xưng hô> tên" mà tên lưu không có từ xưng hô: truy vấn kèm từ
+  xưng hô tìm không ra ở 11/11, lần tìm lại trả đúng liên hệ gold ở 11/11.
+- Trên smoke40, mẫu duy nhất rơi vào luật này là 0131 (2.5 điểm đang mất); 0665 không được sửa vì truy vấn "Hạnh" vẫn tìm ra.
+  Khi luật chạy, lời gọi đầu vẫn nằm trong `tool_calls` nên mẫu đó không thể trọn điểm (thừa một lời gọi).
+- Test: `python -B -m pytest -q -p no:cacheprovider` → 360 passed, 1 skipped; `python -B -m src.inference mock --samples 40` → 40/40.
