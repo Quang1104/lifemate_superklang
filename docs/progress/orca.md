@@ -199,5 +199,18 @@ Brief: `lifemate-orca-ctx-brief.md` (root, 15/11). Chỉ CPU, chỉ viết docs.
 - Sửa: `mask_tool_names` chỉ thay tên trọn vẹn (regex có ranh giới, đi từng chuỗi thay vì trên JSON đã dump).
   File: `scripts/build_sft.py`, `tests/test_orca_mask_whole_names.py`. Build lại: 398 mẫu mask, 0 tên mask dính chữ,
   120 mẫu khác bản cũ và chỉ khác ở hai loại `x-ref` đó.
-- Test: `python -B -m pytest -q -p no:cacheprovider` → xem P-2 (chạy lại cả bộ sau phần Docker).
+- Test sau khi sửa: `python -B -m pytest -q -p no:cacheprovider` → 364 passed, 1 skipped.
 - Tiếp: phần 2, cờ của bản được chọn trong Docker.
+
+## P-2 (15/11): cờ của bản được chọn là một đầu vào của release
+
+- Đã làm: `docker/release_flags.py` (allowlist 9 cờ bật/tắt có trong `src/`, chỉ nhận `TÊN=1`); `docker/release.ps1 -Flags`
+  kiểm cờ trước mọi việc khác, truyền mỗi cờ thành `--build-arg`, và ghi `<archive>.manifest.json` (cờ, SHA256 adapter,
+  SHA256 ASR, MD5 archive); `docker/Dockerfile` khai báo `ARG`/`ENV` cho đúng 9 cờ, đặt sau bước tải/merge model nên đổi cờ
+  không phải build lại model. `predict.sh` và notebook không đặt hay xoá cờ nào (không cần sửa).
+- File: `docker/release_flags.py`, `docker/release.ps1`, `docker/Dockerfile`, `tests/test_orca_release_flags.py`,
+  `docs/SUBMISSION_CHECKLIST.md` (lệnh release cho v3 + ASR fine-tune, v4, v4 có guard, v5).
+- Kiểm: `release.ps1` phân tích cú pháp 0 lỗi; các dòng xử lý cờ chạy trực tiếp trong PowerShell cho đúng `--build-arg` với
+  đầu vào hợp lệ, 0 cờ với đầu vào rỗng, mã lỗi 1 với tên lạ. Máy này chặn chạy file `.ps1` (execution policy), nên chưa chạy
+  cả script và chưa build image: NOT MEASURED.
+- Test: `python -B -m pytest -q -p no:cacheprovider` → 379 passed, 1 skipped; `python -B -m src.inference mock --samples 40` → 40/40.

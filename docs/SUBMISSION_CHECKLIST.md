@@ -39,3 +39,23 @@ Hai fixture notebook cũ trong [tests/test_codex_submission.py](../tests/test_co
 Các blocker ngoài bảng: nguồn BTC còn mâu thuẫn A30/RTX5090 và CUDA ≤13.2/CUDA13.2 bắt buộc; [COMPETITION_RULES.md](COMPETITION_RULES.md#unresolved-official-source-conflicts--release-blockers) giữ nguyên cả hai nguồn. [Dockerfile](../docker/Dockerfile) chọn 13.2, chưa xác nhận máy đích. Artifact train cuối, score, hash, notebook/script trên model thật, training trong image và clean GPU run đều **NOT MEASURED**.
 
 Không thay đổi output schema/scoring hoặc official zaic_tools. Bảng neo ngày vẫn mặc định tắt (LIFEMATE_DATE_TABLE=1 mới bật); không đo lại coverage hay chất lượng model trong phiên này.
+
+## Lệnh release theo từng ứng viên (15/11)
+
+Cờ của model là một đầu vào của release: `release.ps1 -Flags "TÊN=1,..."` → kiểm bằng allowlist `docker/release_flags.py`
+(tên lạ, giá trị khác `1` hoặc lặp tên thì dừng trước khi build) → mỗi cờ thành một `--build-arg` → dòng `ENV` trong image →
+ghi vào `<archive>.manifest.json` cùng SHA256 của adapter, SHA256 của ASR và MD5 của archive. `predict.sh` và
+`predict_notebook.ipynb` không đặt hay xoá cờ nào (test `tests/test_orca_release_flags.py`). Mọi ứng viên chạy với
+`LIFEMATE_NATIVE_FEWSHOT_K=2` (mặc định của Dockerfile). Masking của v5 chỉ dùng lúc train nên không có cờ suy luận.
+
+| Ứng viên | Lệnh (ASR đã fine-tune đặt trong `<AdapterDir>\asr`) |
+|---|---|
+| v3 + ASR fine-tune | `powershell.exe -NoProfile -File .\docker\release.ps1 -AdapterDir <adapter v3>` |
+| v4 | `powershell.exe -NoProfile -File .\docker\release.ps1 -AdapterDir <adapter v4> -Flags "LIFEMATE_CONTEXT_V4=1,LIFEMATE_SMALL_FIXES=1"` |
+| v4 có guard trùng tên | như v4, thêm `,LIFEMATE_DUP_GUARD=1` vào `-Flags` |
+| v5 | `powershell.exe -NoProfile -File .\docker\release.ps1 -AdapterDir <adapter v5> -Flags "LIFEMATE_CONTEXT_V4=1,LIFEMATE_SMALL_FIXES=1,LIFEMATE_DATE_TABLE=1"` |
+
+Sau khi build, đối chiếu cờ trong image với manifest: `docker image inspect <tag> --format '{{json .Config.Env}}'`.
+Chưa build image nào với `-Flags`: kích thước, thời gian và kết quả chạy trong container là NOT MEASURED. Trên máy này
+PowerShell chặn chạy file script (execution policy), nên `release.ps1` mới được phân tích cú pháp (0 lỗi) và các dòng xử lý
+cờ được chạy trực tiếp trong PowerShell: đầu vào hợp lệ cho đúng các `--build-arg`, rỗng cho 0 cờ, tên lạ trả mã lỗi 1.
