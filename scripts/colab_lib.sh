@@ -16,9 +16,10 @@ merge() {  # merge <adapter_dir> <out_dir>
   [ -f "$2/config.json" ] || python -B training_code/stream_merge.py --base "$M/fallback_planner" --adapter "$1" --output "$2"
 }
 public() {  # public <model_dir> <name> [ENV=1 ...]
-  local out=/content/public_runs/$2; mkdir -p "$out"
+  local out=/content/public_runs/$2; mkdir -p "$out" "$R/public"
   env $OFF "${@:3}" python -B -m src.inference official --split public_test --data-root "$K" --model-dir "$1" \
-      --asr-dir "$M/asr" --device cuda --planner-mode native --output "$out/submission.jsonl" || return 1
+      --asr-dir "$M/asr" --device cuda --planner-mode native --output "$out/submission.jsonl" \
+      --resume-log "$R/public/$2.progress.jsonl" || return 1
   mkdir -p "$R/public" && cp -r "$out" "$R/public/" && echo "PUBLIC_DONE $2 $(wc -l < "$out/submission.jsonl")"
 }
 smoke() {  # smoke <model_dir> <name> [ENV=1 ...]; prints the proxy score. SOURCE overrides the ASR input.

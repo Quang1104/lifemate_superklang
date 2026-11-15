@@ -14,7 +14,7 @@ from .api import ModelHandle, load_models
 from .mock import run_mock
 from .official import KitError, OfficialKit
 from .paths import safe_path
-from .pipeline import predict_records, write_official_records
+from .pipeline import append_resume_log, predict_records, read_resume_log, write_official_records
 
 
 def _read_manifest(path: str | None) -> set[str] | None:
@@ -53,6 +53,7 @@ def _parser() -> argparse.ArgumentParser:
                           help="TRAIN only: multiply every time limit to measure accuracy on slower GPUs")
     official.add_argument("--train-report", type=Path,
                           help="Record TRAIN timing and failure status separately from official logs")
+    official.add_argument("--resume-log", help="Append each finished record here; a rerun skips logged IDs")
     commands.add_parser("oracle", help="Explain why inference never uses TRAIN labels")
     return parser
 
@@ -123,7 +124,13 @@ def _run_official(args: argparse.Namespace, *, models: ModelHandle | None = None
     report_path = safe_path(args.train_report) if args.train_report else None
     if report_path == output:
         raise KitError("TRAIN report and official output require separate files")
+    resume_log = getattr(args, "resume_log", None)  # api.predict builds its own Namespace without it
+    resume_path = safe_path(resume_log) if resume_log else None
+    if resume_path is not None and resume_path in (output, report_path):
+        raise KitError("The resume log requires its own file")
     kit = OfficialKit(args.data_root, args.split)
+    finished = (read_resume_log(resume_path, {row["id"] for row in kit.rows(manifest)})
+                if resume_path is not None else None)
     defaults = Limits()
     limits = replace(defaults, sample_seconds=defaults.sample_seconds * args.time_scale,
                      planner_seconds=defaults.planner_seconds * args.time_scale,
@@ -167,11 +174,14 @@ def _run_official(args: argparse.Namespace, *, models: ModelHandle | None = None
                                if result is None or result.dispatched_calls == 0 else {}),
                             **_sample_model_timings(planner, transcribe)})
 
-    count = write_official_records(output, predict_records(
+    records = predict_records(
         kit, planner, transcribe, sample_ids=manifest, control_noop=args.control_noop,
         limits=limits, planner_factory=planner_factory, on_sample=track,
-        continue_train_failures=report_path is not None,
-    ), allow_empty=report_path is not None)
+        continue_train_failures=report_path is not None, finished=finished,
+    )
+    if resume_path is not None:
+        records = append_resume_log(resume_path, records, finished)
+    count = write_official_records(output, records, allow_empty=report_path is not None)
     timing = sorted(timings)
     summary = {"mode": "train_noop_control" if args.control_noop else "official_local_model",
                "planner_mode": args.planner_mode, "split": args.split, "records": count,
@@ -181,9 +191,10 @@ def _run_official(args: argparse.Namespace, *, models: ModelHandle | None = None
                "device": args.device, "time_scale": args.time_scale,
                "grammar": dict(planner.grammar_stats) if hasattr(planner, "grammar_stats") else None, "transcript_source": (
                    "control" if args.control_noop else "train_oracle" if args.train_transcripts else "asr"),
-               "model_load_ms": load_ms, "mean_sample_time_ms": mean(timing),
-               "p95_sample_time_ms": timing[math.ceil(0.95 * len(timing)) - 1],
-               "max_sample_time_ms": timing[-1], "competition_score": "NOT MEASURED"}
+               "model_load_ms": load_ms,  # no timings when a resume log already held every sample
+               "mean_sample_time_ms": mean(timing) if timing else None,
+               "p95_sample_time_ms": timing[math.ceil(0.95 * len(timing)) - 1] if timing else None,
+               "max_sample_time_ms": timing[-1] if timing else None, "competition_score": "NOT MEASURED"}
     if gpu is not None:
         summary["gpu_name"] = gpu.get_device_name(args.device)
         summary["peak_gpu_memory_mib"] = round(gpu.max_memory_allocated(args.device) / 2**20, 1)

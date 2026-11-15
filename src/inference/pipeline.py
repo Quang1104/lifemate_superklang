@@ -88,6 +88,7 @@ def predict_records(kit: OfficialKit, planner: Planner, transcribe: Transcribe |
                     export_reserve_seconds: float = 3.0,
                     on_sample: Callable[[str, str, int, RunResult | None, bool], None] | None = None,
                     continue_train_failures: bool = False,
+                    finished: dict[str, OfficialRecord] | None = None,
                     ) -> Iterator[OfficialRecord]:
     if limits.sample_seconds > 30 and kit.split != "train":  # TRAIN may scale limits to measure accuracy only.
         raise KitError("Official inference must fit the 30-second per-sample limit")
@@ -98,6 +99,9 @@ def predict_records(kit: OfficialKit, planner: Planner, transcribe: Transcribe |
     if kit.split != "train" and (transcribe is None or control_noop or sample_ids is not None):
         raise KitError("A test run requires ASR and the complete test split")
     for row in kit.rows(sample_ids):
+        if finished and row["id"] in finished:  # exported by an earlier, interrupted run
+            yield finished[row["id"]]
+            continue
         for model in (planner, transcribe):
             reset_metrics = getattr(model, "reset_metrics", None)
             if callable(reset_metrics):
@@ -175,7 +179,7 @@ def write_official_records(path: str | Path, records: Iterable[OfficialRecord], 
                 if not isinstance(record, OfficialRecord) or record.sample_id in seen:
                     raise KitError("Submission expects one official record per sample ID")
                 seen.add(record.sample_id)
-                sink.write(json.dumps(record.as_dict(), ensure_ascii=False, allow_nan=False) + "\n")
+                sink.write(_record_line(record))
                 count += 1
         if not count and not allow_empty:
             raise KitError("Submission is empty")
@@ -184,3 +188,44 @@ def write_official_records(path: str | Path, records: Iterable[OfficialRecord], 
         if temporary is not None and temporary.exists():
             temporary.unlink()
     return count
+
+
+def _record_line(record: OfficialRecord) -> str:
+    return json.dumps(record.as_dict(), ensure_ascii=False, allow_nan=False) + "\n"
+
+
+def read_resume_log(path: str | Path, split_ids: set[str]) -> dict[str, OfficialRecord]:
+    """Load records an interrupted run already exported; cut a partially written last line."""
+    log = safe_path(path)
+    if not log.exists():
+        return {}
+    data = log.read_bytes()
+    complete = data.rfind(b"\n") + 1
+    if complete < len(data):
+        with log.open("r+b") as sink:
+            sink.truncate(complete)
+    finished: dict[str, OfficialRecord] = {}
+    for line in data[:complete].decode("utf-8").splitlines():
+        row = json.loads(line)
+        if (not isinstance(row, dict) or set(row) - {"time"} != {"id", "tool_calls", "state_hash"}
+                or not isinstance(row["tool_calls"], list) or not isinstance(row["state_hash"], str)
+                or not isinstance(row.get("time", 0), int)):
+            raise KitError("Resume log holds a malformed record")
+        if row["id"] not in split_ids or row["id"] in finished:
+            raise KitError(f"Resume log holds an unexpected or repeated ID: {row['id']}")
+        finished[row["id"]] = OfficialRecord(row["id"], row["tool_calls"], row["state_hash"], row.get("time"))
+    return finished
+
+
+def append_resume_log(path: str | Path, records: Iterable[OfficialRecord],
+                      finished: dict[str, OfficialRecord]) -> Iterator[OfficialRecord]:
+    """Durably log each newly exported record before passing it on."""
+    log = safe_path(path)
+    log.parent.mkdir(parents=True, exist_ok=True)
+    with log.open("a", encoding="utf-8", newline="\n") as sink:
+        for record in records:
+            if record.sample_id not in finished:
+                sink.write(_record_line(record))
+                sink.flush()
+                os.fsync(sink.fileno())
+            yield record
