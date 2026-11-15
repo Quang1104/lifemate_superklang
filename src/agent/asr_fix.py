@@ -179,6 +179,32 @@ def _snap(words: list[str], known: dict[tuple[str, ...], str], casing: dict) -> 
     return out
 
 
+_EMAIL = re.compile(r"((?:\w+ chấm )*\w+(?: (?:%s))*),? a còng (\w+(?: chấm \w+)+)" % "|".join(sorted(_NUMBER_WORDS)),
+                    re.IGNORECASE)
+
+
+def _ascii(word: str) -> str:
+    return "".join(char for char in normalize("NFD", word.lower().replace("đ", "d")) if char.isalnum())
+
+
+def spoken_email(text: str) -> str:
+    """Write a dictated address as one: "mai chấm anh năm mốt a còng example chấm test" -> mai.anh51@example.test.
+
+    LIFEMATE_SMALL_FIXES=1. Seven TRAIN requests dictate an address this way and gold sends the joined form.
+    """
+    def joined(match: re.Match) -> str:
+        parts = []
+        for part in match.group(1).split(" chấm "):
+            head, *spoken = part.split()
+            digits = number(tuple(word.lower() for word in spoken)) if spoken else ""
+            if digits is None:
+                return match.group(0)  # the words after the name are not one number: leave the text alone
+            parts.append(_ascii(head) + str(digits))
+        return ".".join(parts) + "@" + ".".join(map(_ascii, match.group(2).split(" chấm ")))
+
+    return _EMAIL.sub(joined, normalize("NFC", text))
+
+
 def _repair(text: str, known: dict, casing: dict) -> str:
     pieces = normalize("NFC", text).split()
     if not pieces:
@@ -196,24 +222,34 @@ def fix(text: str, context: dict) -> str:
 class _Repaired:
     """A transcriber whose text is repaired with one sample's names, through every entry point it offers."""
 
-    def __init__(self, inner, known: dict, casing: dict) -> None:
-        self._inner, self._known, self._casing = inner, known, casing
+    def __init__(self, inner, known: dict | None, casing: dict, emails: bool = False) -> None:
+        self._inner, self._known, self._casing, self._emails = inner, known, casing, emails
+
+    def _text(self, text: str) -> str:
+        if self._emails:
+            text = spoken_email(text)
+        return text if self._known is None else _repair(text, self._known, self._casing)
 
     def __call__(self, path):
-        return _repair(self._inner(path), self._known, self._casing)
+        return self._text(self._inner(path))
 
     def __getattr__(self, name):  # transcribe(path, deadline=) and transcribe_with_context(...), when present
         method = getattr(self._inner, name)
         if name not in ("transcribe", "transcribe_with_context"):
             return method
-        return lambda *args, **options: _repair(method(*args, **options), self._known, self._casing)
+        return lambda *args, **options: self._text(method(*args, **options))
 
 
 def wrapped(transcribe, row: dict):
-    """The same transcriber, or with LIFEMATE_ASR_FIX=1 one that repairs its text for this sample."""
-    if transcribe is None or os.environ.get("LIFEMATE_ASR_FIX") != "1":
+    """The same transcriber, or one that repairs its text for this sample.
+
+    LIFEMATE_ASR_FIX=1 turns on names, casing and codes; LIFEMATE_SMALL_FIXES=1 dictated e-mail addresses.
+    """
+    names_on = os.environ.get("LIFEMATE_ASR_FIX") == "1"
+    emails = os.environ.get("LIFEMATE_SMALL_FIXES") == "1"
+    if transcribe is None or not (names_on or emails):
         return transcribe
-    return _Repaired(transcribe, names(row), _casing())
+    return _Repaired(transcribe, names(row) if names_on else None, _casing() if names_on else {}, emails)
 
 
 def _measure(data_root: str, transcripts: str) -> None:

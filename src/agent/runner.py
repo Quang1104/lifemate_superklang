@@ -2,6 +2,7 @@
 
 from copy import deepcopy
 from dataclasses import dataclass
+from datetime import datetime
 from math import isfinite
 import os
 from queue import Empty, Queue
@@ -117,6 +118,25 @@ def same_name_ask(name: str, arguments: dict[str, Any], parameters: dict[str, An
     return None
 
 
+def moved_event_end(arguments: dict[str, Any], results: list[dict[str, Any]]) -> dict[str, Any]:
+    """calendar.update_event arguments with the end TRAIN gold always sends when the start moves.
+
+    Gold keeps the event's length: end = new start + old duration (27 of 27 moves; docs/CONTEXT_PLAN.md).
+    Nothing changes unless the old event, with its start and end, is in the visible results.
+    """
+    if "start" not in arguments or "end" in arguments:
+        return arguments
+    old = None
+    for records in (found for result in results for found in _record_lists(result)):
+        old = next((record for record in records if record["id"] == arguments.get("event_id")
+                    and "start" in record and "end" in record), old)
+    try:
+        length = datetime.fromisoformat(old["end"]) - datetime.fromisoformat(old["start"])
+        return {**arguments, "end": (datetime.fromisoformat(arguments["start"]) + length).isoformat()}
+    except (TypeError, ValueError):  # no such event, or timestamps this cannot read: leave the call alone
+        return arguments
+
+
 def run_sample(sample: Sample, registry: ToolRegistry, planner: Planner,
                environment_factory: Callable[[Sample], Environment], *,
                limits: Limits = Limits()) -> RunResult:
@@ -185,6 +205,11 @@ def run_sample(sample: Sample, registry: ToolRegistry, planner: Planner,
             parameters = next((tool["parameters"] for tool in tools if tool["name"] == action.name), None)
             if parameters is not None:
                 action = ToolCall(action.name, normalize_arguments(action.arguments, parameters, sample.context))
+
+        if os.environ.get("LIFEMATE_SMALL_FIXES") == "1" and action.name == "calendar.update_event":
+            action = ToolCall(action.name, moved_event_end(action.arguments, [
+                *(prior.payload for prior in sample.prior_tool_results),
+                *(item.content for item in observations if item.kind == "untrusted_tool_result")]))
 
         if os.environ.get("LIFEMATE_DUP_GUARD") == "1" and not action.name.startswith("sys."):
             parameters = next((tool["parameters"] for tool in tools if tool["name"] == action.name), None)

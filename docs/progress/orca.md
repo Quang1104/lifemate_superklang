@@ -82,3 +82,18 @@ Brief: `lifemate-orca-ctx-brief.md` (root, 15/11). Chỉ CPU, chỉ viết docs.
   nên cần xem dòng `rows` khi train v4 để biết có mẫu nào bị loại.
 - Test: `python -B -m pytest -q -p no:cacheprovider` → 325 passed, 1 skipped; `python -B -m src.inference mock --samples 40` → 40/40.
 - Tiếp: `LIFEMATE_SMALL_FIXES` (bù `end` cho `calendar.update_event`, email đọc đánh vần).
+
+## V4-3 (15/11 15:10): `LIFEMATE_SMALL_FIXES=1` xong
+
+- Đã làm:
+  - `calendar.update_event`: khi model đổi `start` mà không có `end` và sự kiện cũ (có `start`, `end`) nằm trong kết quả
+    đã thấy (lượt hiện tại hoặc lịch sử), thêm `end` = `start` mới + thời lượng cũ. Hàm `moved_event_end` trong `runner.py`.
+  - Email đọc đánh vần: `asr_fix.spoken_email` ghép "mai chấm anh năm mốt a còng example chấm test" thành
+    `mai.anh51@example.test`; chạy trong lớp bọc transcriber (cùng chỗ nối với `LIFEMATE_ASR_FIX`, hai cờ độc lập).
+- File: `src/agent/runner.py`, `src/agent/asr_fix.py`, `tests/test_orca_v4_small_fixes.py`.
+- Căn cứ trên 1236 ID train (`python -B -m scripts.orca_v4_measure small --data-root <kit>`): 27 lời gọi gold dời `start`,
+  27 có `end`, 27 có sự kiện cũ trong kết quả đã thấy, 27 có `end` = `start` mới + thời lượng cũ. 7 câu gold đọc đánh vần
+  địa chỉ email; luật ghép ra đúng địa chỉ gold ở 7/7 câu với transcript gold và 0/7 với transcript PhoWhisper-medium
+  (`outputs/asr_train.jsonl`); không đổi câu nào khác. Với ASR đã fine-tune: NOT MEASURED.
+- Test: `python -B -m pytest -q -p no:cacheprovider` → 344 passed, 1 skipped; `python -B -m src.inference mock --samples 40` → 40/40.
+- Tiếp: mục "Đã làm" trong `docs/CONTEXT_PLAN.md`.
