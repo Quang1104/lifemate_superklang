@@ -60,3 +60,25 @@ Brief: `lifemate-orca-ctx-brief.md` (root, 15/11). Chỉ CPU, chỉ viết docs.
   68 lần gold hỏi một giá trị (guard không áp dụng). Điểm: NOT MEASURED.
 - Test: `python -B -m pytest -q -p no:cacheprovider` → 316 passed, 1 skipped; `python -B -m src.inference mock --samples 40` → 40/40.
 - Tiếp: `LIFEMATE_CONTEXT_V4` (app không cài, ví dụ kèm kết quả tra cứu, chú giải enum).
+
+## V4-2 (15/11 15:05): `LIFEMATE_CONTEXT_V4=1` xong
+
+- Đã làm, tất cả trong code dùng chung cho train và suy luận:
+  - App không cài: `OfficialKit.app_names` (tên `name_vi` theo catalog của split); `pipeline._sample_from_row` ghi
+    `context["apps"]`; `native_planner.build_messages` in ba dòng (đã cài / KHÔNG cài / bỏ qua việc cần app không cài).
+  - Ví dụ kèm kết quả tra cứu: `build_sft.py --fewshot-k` luôn ghi thêm `results` vào pool (kết quả gold của lệnh đọc,
+    cắt 500 ký tự, lệnh ghi và `sys.*` để trống); chỉ khi bật cờ thì `fewshot.select` trả `results` với ngân sách
+    6000 ký tự và `render_examples` in mỗi lệnh một dòng, lệnh đọc kèm `⇒ kết quả`.
+  - Chú giải enum: bảng viết tay 85 giá trị của catalog train + public trong `native_planner`; `tool_definitions` thêm
+    `Giá trị: electricity = điện; ...` vào mô tả tham số (bản sao, không sửa schema gốc); giá trị lạ để nguyên.
+- File: `src/inference/official.py`, `src/inference/pipeline.py`, `src/agent/fewshot.py`, `src/agent/native_planner.py`,
+  `scripts/build_sft.py`, `src/agent/data/fewshot_native.jsonl` (586,509 → 1,085,562 byte), `tests/test_orca_v4_context.py`.
+- Kiểm tắt cờ: build SFT mặc định và build `--fewshot-k 2` với pool mới trùng byte với bản trước khi sửa
+  (sha256 đầu `340f7fad…` và `dfba1337…`).
+- Đo bật cờ (`python -B -m scripts.orca_v4_measure prompt --data-root <kit>`, smoke40, K=2, transcript gold):
+  system prompt thêm median 2034 ký tự (p95 3041, max 3110); định nghĩa tool thêm median 650 (p95 1096);
+  tổng thêm median 2505 (p95 3778, max 3885). Bản ghi SFT 1236 mẫu: ký tự p50 18,214 → 20,667, max 33,193 → 37,872.
+  Token Qwen và điểm: NOT MEASURED. Lưu ý: v3 có max 9,714 token ở 33,193 ký tự; `train_qlora.py --max-tokens 12000`
+  nên cần xem dòng `rows` khi train v4 để biết có mẫu nào bị loại.
+- Test: `python -B -m pytest -q -p no:cacheprovider` → 325 passed, 1 skipped; `python -B -m src.inference mock --samples 40` → 40/40.
+- Tiếp: `LIFEMATE_SMALL_FIXES` (bù `end` cho `calendar.update_event`, email đọc đánh vần).

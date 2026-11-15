@@ -45,6 +45,11 @@ def _sample_from_row(kit: OfficialKit, row: dict[str, Any], transcribe: Transcri
     apps, tools = installed_permissions(row["context"])
     context = {key: row["context"][key] for key in ("current_time", "timezone", "location", "user_profile")
                if key in row["context"]}
+    if os.environ.get("LIFEMATE_CONTEXT_V4") == "1":
+        # Which apps of this split's catalog the device has and lacks; build_sft.py passes through here too.
+        labels = {app: f"{name} ({app})" for app, name in getattr(kit, "app_names", {}).items() if app != "sys"}
+        context["apps"] = {"installed": [label for app, label in labels.items() if app in apps],
+                           "missing": [label for app, label in labels.items() if app not in apps]}
     if control_noop:
         return Sample(sample_id, "Held-out TRAIN no-op control", apps, allowed_tools=tools)
     transcribe = wrapped(transcribe, row)  # the same object unless LIFEMATE_ASR_FIX=1

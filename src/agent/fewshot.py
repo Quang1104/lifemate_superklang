@@ -20,6 +20,8 @@ POOL = Path(__file__).with_name("data") / "fewshot_plans.jsonl"
 NATIVE_POOL = POOL.with_name("fewshot_native.jsonl")
 DEFAULT_K = 2
 DEFAULT_BUDGET = 3_000  # characters of compact JSON for all examples together
+RESULT_CAP = 500  # characters kept of each read-call result stored with a native example (TRAIN p75 is 493)
+RESULTS_BUDGET = 6_000  # budget when examples carry those results (LIFEMATE_CONTEXT_V4)
 
 
 def _words(text: str) -> frozenset[str]:
@@ -50,8 +52,11 @@ class Examples:
         return cls(rows)
 
     def select(self, sample: Sample, tool_names: set[str], k: int = DEFAULT_K,
-               budget: int = DEFAULT_BUDGET) -> list[dict]:
-        """The k most similar examples whose tools are all installed here, within the character budget."""
+               budget: int = DEFAULT_BUDGET, results: bool = False) -> list[dict]:
+        """The k most similar examples whose tools are all installed here, within the character budget.
+
+        `results` also returns (and budgets) the stored read-call results of native examples.
+        """
         if k <= 0:
             return []
         words, apps = _words(sample.user_request), frozenset(sample.installed_apps)
@@ -63,6 +68,8 @@ class Examples:
         chosen, used, transcripts = [], 0, set()
         for _, _, row in ranked:
             item = {"request": row["transcript"], **{key: row[key] for key in ("plan", "calls") if key in row}}
+            if results and "results" in row:
+                item["results"] = row["results"]
             size = len(_compact(item))
             if used + size > budget or row["transcript"] in transcripts:
                 continue

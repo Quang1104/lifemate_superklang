@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 import json
 import os
 
-from .fewshot import native_examples, native_k
+from .fewshot import RESULTS_BUDGET, native_examples, native_k
 from .planner import PlannerInput
 
 _SYSTEM = """Bạn là LifeMate, trợ lý giọng nói tiếng Việt điều khiển các ứng dụng của người dùng bằng tool.
@@ -78,9 +78,56 @@ _REJECTION_HINTS = {
 }
 
 
+# Vietnamese for the enum values of the TRAIN and public catalogs (LIFEMATE_CONTEXT_V4). Tool results and
+# arguments use the English value while users say the Vietnamese word; unknown values get no gloss.
+_ENUM_VI = {
+    "once": "một lần", "daily": "hằng ngày", "weekdays": "ngày thường", "weekends": "cuối tuần", "weekly": "hằng tuần",
+    "washer": "máy giặt", "dishwasher": "máy rửa bát", "dryer": "máy sấy", "rice_cooker": "nồi cơm điện",
+    "microwave": "lò vi sóng", "air_purifier": "máy lọc không khí",
+    "electricity": "điện", "water": "nước", "internet": "mạng", "tv": "tivi, truyền hình", "tuition": "học phí",
+    "phone": "điện thoại", "bank": "ngân hàng", "ewallet": "ví điện tử", "cash": "tiền mặt", "cod": "trả khi nhận hàng",
+    "wrong_item": "sai hàng", "damaged": "hư hỏng", "changed_mind": "đổi ý", "other": "khác",
+    "archive": "lưu trữ", "delete": "xoá", "walking": "đi bộ", "running": "chạy bộ", "cycling": "đạp xe",
+    "swimming": "bơi", "football": "bóng đá", "badminton": "cầu lông", "economy": "phổ thông", "business": "thương gia",
+    "diesel": "dầu diesel", "sjc": "vàng miếng SJC", "ring": "vàng nhẫn", "world": "vàng thế giới",
+    "on": "bật", "off": "tắt", "today": "hôm nay", "week": "tuần", "month": "tháng", "away": "vắng nhà", "home": "ở nhà",
+    "car": "ô tô", "motorbike": "xe máy", "walk": "đi bộ", "transit": "phương tiện công cộng",
+    "pause": "tạm dừng", "resume": "phát tiếp", "next": "bài kế", "previous": "bài trước", "volume": "âm lượng",
+    "mute": "tắt tiếng", "general": "tổng hợp", "sports": "thể thao", "tech": "công nghệ", "entertainment": "giải trí",
+    "bike": "xe máy", "car4": "ô tô 4 chỗ", "car7": "ô tô 7 chỗ", "vacuum": "hút bụi", "mop": "lau nhà", "both": "cả hai",
+    "cool": "làm mát", "heat": "sưởi", "dry": "hút ẩm", "fan": "quạt", "light": "đèn", "climate": "điều hoà",
+    "curtain": "rèm", "plug": "ổ cắm", "buy": "mua", "sell": "bán", "above": "vượt trên", "below": "xuống dưới",
+    "low": "thấp", "normal": "thường", "high": "cao", "open": "chưa xong", "done": "đã xong",
+    "train": "tàu hoả", "bus": "xe khách",
+}
+_ENUM_VI_BY_PARAMETER = {("topic", "business"): "kinh doanh"}
+
+
+def _context_v4() -> bool:
+    return os.environ.get("LIFEMATE_CONTEXT_V4") == "1"
+
+
+def _glossed(schema, parameter: str = ""):
+    """A copy of a parameter schema whose enum descriptions also say what the values mean in Vietnamese."""
+    if isinstance(schema, list):
+        return [_glossed(item, parameter) for item in schema]
+    if not isinstance(schema, dict):
+        return schema
+    copy = {key: ({name: _glossed(item, name) for name, item in value.items()} if key == "properties"
+                  and isinstance(value, dict) else _glossed(value, parameter)) for key, value in schema.items()}
+    values = schema.get("enum")
+    if isinstance(values, list):
+        glosses = [f"{value} = {_ENUM_VI_BY_PARAMETER.get((parameter, value)) or _ENUM_VI[value]}"
+                   for value in values if isinstance(value, str) and value in _ENUM_VI]
+        if glosses:
+            copy["description"] = " ".join(filter(None, [schema.get("description"), "Giá trị: " + "; ".join(glosses)]))
+    return copy
+
+
 def tool_definitions(tools: list[dict]) -> list[dict]:
+    gloss = _glossed if _context_v4() else (lambda parameters: parameters)
     return [{"type": "function", "function": {"name": tool["name"], "description": tool["description"],
-                                              "parameters": tool["parameters"]}} for tool in tools]
+                                              "parameters": gloss(tool["parameters"])}} for tool in tools]
 
 
 def parse_calls(text: str) -> list[tuple[str, dict]]:
@@ -123,8 +170,14 @@ def render_examples(examples: list[dict]) -> str:
     lines = ["Ví dụ yêu cầu tương tự và các lệnh đã dùng (chỉ tham khảo cách chọn tool và thứ tự; "
              "giá trị và ID phải lấy từ yêu cầu hiện tại và kết quả tool):"]
     for item in examples:
-        calls = "; ".join(call["name"] + _dump(call["arguments"]) for call in item["calls"])
-        lines.append(f"- {_dump(item['request'])} → {calls or 'không gọi tool nào'}")
+        calls = [call["name"] + _dump(call["arguments"]) for call in item["calls"]]
+        if "results" not in item or not calls:
+            lines.append(f"- {_dump(item['request'])} → {'; '.join(calls) or 'không gọi tool nào'}")
+            continue
+        # LIFEMATE_CONTEXT_V4: one call per line, each lookup with what it returned, so the reason for a
+        # branch ("ví không đủ thì trừ ngân hàng") is visible. Write calls show no result.
+        lines.append(f"- {_dump(item['request'])}")
+        lines += [f"  {call} ⇒ {_safe(result)}" if result else f"  {call}" for call, result in zip(calls, item["results"])]
     return "\n".join(lines)
 
 
@@ -138,10 +191,18 @@ def build_messages(request: PlannerInput) -> list[dict]:
         date_table = render_date_table(context.get("current_time"))
         if date_table:
             system += "\n\n" + date_table
+    apps = context.get("apps") if _context_v4() else None
+    if isinstance(apps, dict) and apps.get("missing"):
+        system += "\n\n" + "\n".join((
+            "Ứng dụng đã cài: " + ", ".join(apps.get("installed", ())),
+            "Ứng dụng KHÔNG cài trên máy này: " + ", ".join(apps["missing"]),
+            "Việc nào cần một ứng dụng không cài thì bỏ qua việc đó: không thay bằng ứng dụng khác, không hỏi lại."))
     k = native_k()
     if k > 0:
         # Same selection and text when scripts/build_sft.py --fewshot-k builds the training prompts.
-        examples = native_examples().select(sample, {tool["name"] for tool in request.tools}, k)
+        names = {tool["name"] for tool in request.tools}
+        examples = (native_examples().select(sample, names, k, RESULTS_BUDGET, results=True) if _context_v4()
+                    else native_examples().select(sample, names, k))
         if examples:
             system += "\n\n" + render_examples(examples)
     messages =[{"role": "system", "content": system}]

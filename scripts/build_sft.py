@@ -17,7 +17,7 @@ import os
 from pathlib import Path
 from time import monotonic
 
-from src.agent.fewshot import NATIVE_POOL, configured
+from src.agent.fewshot import NATIVE_POOL, RESULT_CAP, configured
 from src.agent.native_planner import build_messages, tool_definitions
 from src.agent.planner import Observation, PlannerInput
 from src.agent.runner import CallbackError
@@ -72,14 +72,22 @@ def main() -> None:
         raise ValueError("Forbidden root")
     excluded = excluded_ids(args.exclude)
     kit = OfficialKit(args.data_root, "train")
+    reads = {tool["name"] for tool in kit.registry.available(frozenset(kit.app_names))
+             if not tool["writes"] and not tool["name"].startswith("sys.")}
     gold, pool = {}, []
     with (kit.directory / "train.jsonl").open(encoding="utf-8") as handle:
         for line in handle:
             row = json.loads(line)
             if row["id"] not in excluded:
                 gold[row["id"]] = row["label"]["tool_calls"]
+                # Gold results of the read calls, cut to a fixed length; prompts use them only under
+                # LIFEMATE_CONTEXT_V4, so the pool stays valid for the plain K-example prompt.
+                kept = [json.dumps(result, ensure_ascii=False, separators=(",", ":")) if call["name"] in reads else None
+                        for call, result in zip(gold[row["id"]], row["label"]["tool_results"])]
                 pool.append({"id": row["id"], "transcript": row["audio_text"],
-                             "apps": sorted(installed_permissions(row["context"])[0]), "calls": gold[row["id"]]})
+                             "apps": sorted(installed_permissions(row["context"])[0]), "calls": gold[row["id"]],
+                             "results": [text if text is None or len(text) <= RESULT_CAP
+                                         else text[:RESULT_CAP] + "…" for text in kept]})
     if args.fewshot_k > 0:
         # Inference reads this same file behind LIFEMATE_NATIVE_FEWSHOT_K; it holds no excluded ID.
         with NATIVE_POOL.open("w", encoding="utf-8", newline='\n') as sink:
