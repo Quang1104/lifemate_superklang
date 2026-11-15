@@ -9,6 +9,7 @@ from tempfile import NamedTemporaryFile
 from time import monotonic
 from typing import Any
 
+from ..agent.asr_fix import wrapped
 from ..agent.planner import Planner
 from ..agent.runner import CallbackError, CallTimeout, Limits, RunResult, _bounded_call, run_sample
 from ..tooling.json_data import encode_json
@@ -46,6 +47,7 @@ def _sample_from_row(kit: OfficialKit, row: dict[str, Any], transcribe: Transcri
                if key in row["context"]}
     if control_noop:
         return Sample(sample_id, "Held-out TRAIN no-op control", apps, allowed_tools=tools)
+    transcribe = wrapped(transcribe, row)  # the same object unless LIFEMATE_ASR_FIX=1
     if transcribe is None:
         user_text = row["audio_text"]
     else:
