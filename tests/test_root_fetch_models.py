@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 fetch = pytest.importorskip("docker.fetch_models")  # needs huggingface_hub
@@ -6,7 +8,8 @@ fetch = pytest.importorskip("docker.fetch_models")  # needs huggingface_hub
 def _pins(tmp_path, monkeypatch):
     # In the image fetch_models.py sits next to configs/; point it at a stub pin file.
     (tmp_path / "configs").mkdir()
-    (tmp_path / "configs" / "colab_models.json").write_text('{"fallback_planner": {}, "asr": {}}')
+    source = Path(__file__).resolve().parents[1] / "configs" / "colab_models.json"
+    (tmp_path / "configs" / "colab_models.json").write_text(source.read_text(encoding="utf-8"))
     monkeypatch.setattr(fetch, "__file__", str(tmp_path / "fetch_models.py"))
 
 

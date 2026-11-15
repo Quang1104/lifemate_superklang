@@ -585,7 +585,7 @@ class LocalWhisper:
         self._device, self._dtype = _device_and_dtype(torch, device)
         local = {"local_files_only": True, "trust_remote_code": False}
         self._processor = AutoProcessor.from_pretrained(directory, **local)
-        # PhoWhisper-medium is published as a PyTorch checkpoint; Transformers
+        # PhoWhisper base checkpoints use PyTorch serialization; Transformers
         # enforces its minimum torch version for weights-only loading.
         self._model = WhisperForConditionalGeneration.from_pretrained(
             directory, dtype=self._dtype, attn_implementation="sdpa", weights_only=True, **local,

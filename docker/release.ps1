@@ -4,8 +4,9 @@
 Build and export the LifeMate image. Base planner and ASR weights are downloaded inside the build
 (pinned revisions in configs/colab_models.json) and the QLoRA adapter is merged there, so the only
 local input is the adapter folder (~130 MB).
-A fine-tuned ASR (training_code/train_asr.py output, ~1.5 GB) placed in <AdapterDir>sr replaces
-the pinned PhoWhisper download (docker/fetch_models.py).
+A fine-tuned ASR (training_code/train_asr.py output) placed in <AdapterDir>\asr replaces
+the pinned PhoWhisper download unchanged (medium or large; docker/fetch_models.py).
+Large fp16 weights are approximately 3.1 GB (estimate; measure the actual checkpoint).
 .EXAMPLE
 powershell.exe -NoProfile -File .\docker\release.ps1 -CheckOnly
 powershell.exe -NoProfile -File .\docker\release.ps1 -AdapterDir C:\lifemate_release\qlora_native
@@ -17,6 +18,8 @@ Undo everything this script created with docker\cleanup.ps1 (see docker\LOCAL_DI
 [CmdletBinding()]
 param(
     [string]$AdapterDir,
+    [ValidateSet('asr', 'asr_large')]
+    [string]$AsrRole = 'asr',  # fallback download only; <AdapterDir>\asr takes precedence
     [string]$ImageTag = 'lifemate:2026-11-15',
     # Outside the repo: the repo lives in OneDrive and a 15+ GB archive must not be synced.
     [string]$OutputArchive = (Join-Path $env:USERPROFILE 'lifemate_release\lifemate-2026-11-15.tar.gz'),
@@ -60,7 +63,7 @@ $imagesBefore = @(& docker image ls --quiet --no-trunc)
    started = (Get-Date).ToString('s') } | ConvertTo-Json | Set-Content -LiteralPath $stateFile -Encoding UTF8
 
 $buildArguments = @('build', '--file', (Join-Path $PSScriptRoot 'Dockerfile'),
-    '--build-context', "adapter=$adapter", '--tag', $ImageTag)
+    '--build-context', "adapter=$adapter", '--tag', $ImageTag, '--build-arg', "ASR_ROLE=$AsrRole")
 foreach ($flag in $flagLines) { $buildArguments += @('--build-arg', $flag) }
 $buildArguments += $repo
 & docker @buildArguments
