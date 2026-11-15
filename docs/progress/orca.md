@@ -150,3 +150,14 @@ Brief: `lifemate-orca-ctx-brief.md` (root, 15/11). Chỉ CPU, chỉ viết docs.
   trên G4; 0.51 s/mẫu): train 15–25 phút, ASR 1.0–1.5 s/mẫu. WER của large: NOT MEASURED.
 - Trần trên smoke40: 8.4 điểm (4 mẫu chỉ đúng khi có transcript gold: 0578, 1202, 1095, 1015). Xếp sau các việc về planner.
 - Tiếp: câu 5.
+
+## R-5 (15/11 19:00): xử lý dữ liệu, và viết xong `docs/RESEARCH_NEXT.md`
+
+- Đếm trên 1236 ID train: 0 transcript trùng nhau; 0 kết quả tool dài quá 6000 ký tự (2954 trong lịch sử, 2840 gold);
+  41 mẫu có lịch sử dài hơn 20 lượt. Không thấy lỗi xử lý lớn.
+- Quy ước nhãn: 161/161 truy vấn gold của `contacts.search` bằng đúng tên một liên hệ được trả về; 38 tên bắt đầu bằng từ xưng
+  hô viết hoa; 11 câu nói "anh X" nhưng tên lưu là "X"; truy vấn nguyên văn trong câu nói 129/161 (bỏ hoa-thường 157/161).
+  Nội dung chữ gold nguyên văn trong câu nói: `content` 70/235, `title` 46/118.
+- Chọn đúng tuyệt đối giữa W và v3 theo từng mẫu cho 64.41 (v3 51.73), nhưng không có luật chọn và hai model merge vượt
+  giới hạn tham số: không đề xuất.
+- `docs/RESEARCH_NEXT.md`: 6 việc xếp theo trần, kèm danh sách không làm. Mọi mức tăng: NOT MEASURED.
