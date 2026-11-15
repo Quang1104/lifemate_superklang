@@ -72,6 +72,7 @@ Tests: mỗi làn thêm test vào file `tests/test_<làn>_*.py` riêng để tr�
 3. Kết quả chưa đo ghi `NOT MEASURED`. Không bịa số.
 4. Dữ liệu: dùng đường dẫn tuyệt đối tới kit, ví dụ `C:/Users/ADMIN/OneDrive - VNU-HCMUS/Documents/XuanQuang/datalife/train+public_test`. Không đọc thư mục `*_environment` hay `state.json`.
 5. Test trước khi bàn giao: `python -B -m pytest -q -p no:cacheprovider` và `python -B -m src.inference mock --samples 40`.
+6. **Ghi tiến độ để không mất việc khi hết quota.** Mọi agent được giao việc (Codex, Orca, subagent) phải có một file `PROGRESS.md` trong thư mục làm việc của mình (staging của Codex, hoặc `docs/progress/<làn>.md`), ghi ngay sau mỗi bước xong: đã làm gì, file nào đổi, lệnh test + dòng kết quả, bước kế tiếp. Sửa code lớn thì lưu patch/commit theo từng bước nhỏ, không dồn đến cuối. Root khi giao việc phải ghi yêu cầu này vào brief; khi một agent dừng giữa chừng, root đọc `PROGRESS.md` (Codex: thêm `codex exec resume --last`) rồi giao tiếp cho agent còn quota.
 
 ## Nhật ký
 
