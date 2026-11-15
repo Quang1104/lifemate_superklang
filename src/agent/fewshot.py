@@ -22,6 +22,9 @@ DEFAULT_K = 2
 DEFAULT_BUDGET = 3_000  # characters of compact JSON for all examples together
 RESULT_CAP = 500  # characters kept of each read-call result stored with a native example (TRAIN p75 is 493)
 RESULTS_BUDGET = 6_000  # budget when examples carry those results (LIFEMATE_CONTEXT_V4)
+# LIFEMATE_FEWSHOT_GATE: no examples when the best one scores below this. Chosen label-free (docs/V6_PLAN.md): below it
+# fall 8.7% of TRAIN requests (gold text, leave-one-out) and 25.7% of the leave-app-out holdout (unseen apps).
+GATE_TAU = 0.23
 
 
 def _words(text: str) -> frozenset[str]:
@@ -65,6 +68,8 @@ class Examples:
             for row, row_words, row_apps, row_tools in self._rows
             if row["id"] != sample.sample_id and row_tools <= tool_names
         )
+        if os.environ.get("LIFEMATE_FEWSHOT_GATE") == "1" and (not ranked or -ranked[0][0] < GATE_TAU):
+            return []  # nothing similar: examples would only pull the model toward TRAIN tools
         chosen, used, transcripts = [], 0, set()
         for _, _, row in ranked:
             item = {"request": row["transcript"], **{key: row[key] for key in ("plan", "calls") if key in row}}
