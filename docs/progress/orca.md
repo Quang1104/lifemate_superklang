@@ -46,3 +46,17 @@ Brief: `lifemate-orca-ctx-brief.md` (root, 15/11). Chỉ CPU, chỉ viết docs.
   dòng app không cài và ví dụ kèm bằng chứng cần một lượt QLoRA (trần 5.0 và 13.13).
 - Chưa đo: điểm của mọi đề xuất, v3 với transcript gold, token và độ trễ thêm.
 - Tiếp (nếu root duyệt): code guard trùng tên và các thay đổi prompt sau cờ; lượt GPU đầu tiên nên là v3 với `--train-transcripts`.
+
+# Việc v4 (brief `lifemate-orca-v4-brief.md`, root duyệt 15/11 14:55): ba cờ, mặc định tắt
+
+## V4-1 (15/11 15:00): `LIFEMATE_DUP_GUARD=1` xong
+
+- Đã làm: trong `src/agent/runner.py`, ngay trước guard `registry.authorize`: nếu lời gọi dùng một ID (đối số có `x-ref`)
+  thuộc bản ghi trùng `name`/`title` với bản ghi khác trong cùng danh sách kết quả của lượt hiện tại, thay bằng
+  `sys.ask_missing_info{"tool_name": T, "params": [p]}`. Chỉ khi mẫu có tool `sys.ask_missing_info`; không đụng lời gọi `sys.*`.
+- File: `src/agent/runner.py`, `tests/test_orca_v4_dup_guard.py`, `scripts/orca_v4_measure.py`.
+- Đo trên gold của 1236 ID train (`python -B -m scripts.orca_v4_measure dup --data-root <kit>`, schema lấy từ registry):
+  979 lời gọi gold dùng một ID, guard đổi 6; 112 lần gold hỏi một ID, guard tái tạo đúng 53 từ một lời gọi thẳng;
+  68 lần gold hỏi một giá trị (guard không áp dụng). Điểm: NOT MEASURED.
+- Test: `python -B -m pytest -q -p no:cacheprovider` → 316 passed, 1 skipped; `python -B -m src.inference mock --samples 40` → 40/40.
+- Tiếp: `LIFEMATE_CONTEXT_V4` (app không cài, ví dụ kèm kết quả tra cứu, chú giải enum).

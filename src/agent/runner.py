@@ -84,6 +84,39 @@ def _bounded_call(callback: Callable[[], _T], seconds: float) -> _T:
     return value
 
 
+def _record_lists(value: Any):
+    """Every list of records with an id, anywhere inside a tool result."""
+    if isinstance(value, list):
+        if value and all(isinstance(item, dict) and "id" in item for item in value):
+            yield value
+        for item in value:
+            yield from _record_lists(item)
+    elif isinstance(value, dict):
+        for item in value.values():
+            yield from _record_lists(item)
+
+
+def same_name_ask(name: str, arguments: dict[str, Any], parameters: dict[str, Any],
+                  results: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """Arguments of the clarification gold asks when an ID was picked among records that share a name.
+
+    In TRAIN gold a lookup that returns two records with one name is followed by sys.ask_missing_info for the
+    ID parameter, not by a choice (docs/CONTEXT_PLAN.md 3.1). `results` are this turn's tool results only.
+    """
+    def label(record: dict[str, Any]) -> str:
+        return str(record.get("name") or record.get("title") or "").casefold()
+
+    properties = parameters.get("properties", {})
+    for parameter, value in arguments.items():
+        if not isinstance(value, str) or "x-ref" not in properties.get(parameter, {}):
+            continue
+        for records in (found for result in results for found in _record_lists(result)):
+            chosen = next((record for record in records if record["id"] == value and label(record)), None)
+            if chosen is not None and sum(label(record) == label(chosen) for record in records) > 1:
+                return {"tool_name": name, "params": [parameter]}
+    return None
+
+
 def run_sample(sample: Sample, registry: ToolRegistry, planner: Planner,
                environment_factory: Callable[[Sample], Environment], *,
                limits: Limits = Limits()) -> RunResult:
@@ -152,6 +185,14 @@ def run_sample(sample: Sample, registry: ToolRegistry, planner: Planner,
             parameters = next((tool["parameters"] for tool in tools if tool["name"] == action.name), None)
             if parameters is not None:
                 action = ToolCall(action.name, normalize_arguments(action.arguments, parameters, sample.context))
+
+        if os.environ.get("LIFEMATE_DUP_GUARD") == "1" and not action.name.startswith("sys."):
+            parameters = next((tool["parameters"] for tool in tools if tool["name"] == action.name), None)
+            if parameters is not None and any(tool["name"] == "sys.ask_missing_info" for tool in tools):
+                ask = same_name_ask(action.name, action.arguments, parameters, [
+                    item.content for item in observations if item.kind == "untrusted_tool_result"])
+                if ask is not None:
+                    action = ToolCall("sys.ask_missing_info", ask)
 
         try:
             spec = registry.authorize(action.name, action.arguments, sample.installed_apps,
