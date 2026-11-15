@@ -105,3 +105,18 @@ Brief: `lifemate-orca-ctx-brief.md` (root, 15/11). Chỉ CPU, chỉ viết docs.
 - Trạng thái: cả ba cờ đã commit, test 344 passed / 1 skipped, mock 40/40. Chưa push.
 - Việc của root: thêm cờ vào `scripts/colab_v4.sh` (`LIFEMATE_CONTEXT_V4=1` cho cả `build_sft.py` và suy luận;
   `LIFEMATE_DUP_GUARD=1`, `LIFEMATE_SMALL_FIXES=1` lúc suy luận). Mọi điểm số: NOT MEASURED.
+
+# Research sau v4 (brief `lifemate-orca-research2-brief.md`, 15/11 18:20): chỉ CPU, kết quả ở `docs/RESEARCH_NEXT.md`
+
+## R-1 (15/11 18:30): v3_asrft mất 48.27 điểm ở đâu
+
+- Nguồn: `outputs/colab/smoke_ab_drive/smoke_ab/{v3_asrft,w_asrft,oracle_transcripts}/native.{scored,report}.json`.
+  v3_asrft 51.73 (17 mẫu trọn điểm), w_asrft 44.77, oracle (W + transcript gold) 49.92. Phân loại thủ công theo lỗi đầu tiên.
+- Điểm mất theo nhóm: điều kiện/nhiều bước 13.54 (0087, 0169, 0229, 0286, 1095, 1360, 1645); sai giá trị đối số 11.25
+  (0131, 0280, 0665, 0675, 0695); ngày giờ 10.0 (0188, 0611, 0707, 1202); thiếu hỏi 5.0 (1296, 1598);
+  hành động trên gold rỗng 5.0 (1161, 1582); thừa/thiếu đối số tuỳ chọn 3.48 (0246, 0578, 1015). Tổng 48.27.
+- Tách nguồn bằng ba lượt: 12 mẫu sai ở cả ba lượt (planner, 26.9 điểm); 7 mẫu W + cùng ASR đúng hơn v3 (0707, 0280, 0131,
+  0695, 1161, 0286, 0246: lỗi riêng của planner v3, 13.0 điểm); 4 mẫu chỉ đúng khi có transcript gold (0578, 1202, 1095,
+  1015: còn do ASR, 8.4 điểm).
+- Ba mẫu trùng tên (0086, 0350, 0413) v3_asrft đã trọn điểm, nên `LIFEMATE_DUP_GUARD` không còn điểm nào để lấy trên smoke40.
+- Tiếp: câu 2, tổng quát hoá sang 34 tool chỉ có ở public.
