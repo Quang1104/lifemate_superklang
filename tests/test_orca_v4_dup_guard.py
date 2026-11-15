@@ -1,4 +1,4 @@
-"""LIFEMATE_DUP_GUARD: an ID picked among same-name records becomes the clarification gold asks."""
+"""A name collision alone must not override a planner choice grounded in other record fields."""
 
 import json
 
@@ -45,7 +45,7 @@ def registry():
     ])
 
 
-def run(monkeypatch, flag, apps=("contacts", "phone", "sys")):
+def run(monkeypatch, flag, apps=("contacts", "phone", "sys"), text="Gọi cho Lan"):
     monkeypatch.delenv("LIFEMATE_DUP_GUARD", raising=False)
     if flag is not None:
         monkeypatch.setenv("LIFEMATE_DUP_GUARD", flag)
@@ -61,7 +61,7 @@ def run(monkeypatch, flag, apps=("contacts", "phone", "sys")):
                 return TWO_LANS
             return {"ok": True, "waiting_for_user": True} if name == "sys.ask_missing_info" else {"ok": True}
 
-    sample = Sample("s", "Gọi cho Lan", frozenset(apps))
+    sample = Sample("s", text, frozenset(apps))
     result = run_sample(sample, registry(), lambda request: json.dumps(next(planned)), lambda sample: Environment())
     return result, calls
 
@@ -73,10 +73,10 @@ def test_off_by_default_the_model_choice_is_dispatched(monkeypatch, flag):
     assert result.status == "finished"
 
 
-def test_flag_on_dispatches_the_gold_clarification_instead(monkeypatch):
-    result, calls = run(monkeypatch, "1")
-    assert calls == [("contacts.search", {"query": "Lan"}), ("sys.ask_missing_info", ASK)]
-    assert result.status == "waiting_for_user" and result.rejections == 0
+def test_flag_on_preserves_a_choice_disambiguated_by_relation(monkeypatch):
+    result, calls = run(monkeypatch, "1", text="Gọi cho Lan, vợ tôi")
+    assert calls == [("contacts.search", {"query": "Lan"}), ("phone.call", {"contact_id": "c_05"})]
+    assert result.status == "finished" and result.rejections == 0
 
 
 def test_flag_on_without_the_clarification_tool_changes_nothing(monkeypatch):

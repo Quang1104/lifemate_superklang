@@ -29,6 +29,7 @@ def test_a_moved_event_gets_the_end_that_keeps_its_old_length():
     ({"event_id": "evt_04", "title": "Họp"}, [EVENTS]),  # the start does not move
     ({"event_id": "evt_99", "start": MOVE["start"]}, [EVENTS]),  # the old event is not visible
     (MOVE, []),
+    ({**MOVE, "start": "9999-12-31T23:59:59+07:00"}, [EVENTS]),  # duration would overflow
     ({"event_id": "evt_04", "start": "ba giờ chiều"}, [EVENTS]),  # not a timestamp
     (MOVE, [{"ok": True, "events": [{"id": "evt_04", "start": "x", "end": "y"}]}]),
 ])
@@ -80,6 +81,8 @@ def test_flag_on_adds_the_end_from_this_turn_or_from_history_results(monkeypatch
     ("sửa thành mai chấm anh mười bốn a còng example chấm test nha", "sửa thành mai.anh14@example.test nha"),
     ("Ghi là mai chấm anh năm mốt, a còng example chấm test nhé.", "Ghi là mai.anh51@example.test nhé."),
     ("gửi Nhóm hai hai A còng Example chấm Test", "gửi nhom22@example.test"),
+    ("mai chấm anh năm mốt a còng Example Chấm Test", "mai.anh51@example.test"),
+    ("mai Chấm anh năm mốt A Còng Example Chấm Test", "mai.anh51@example.test"),
     ("gửi nhóm bảy tháng ba a còng excelen bồ chẳng tét", "gửi nhóm bảy tháng ba a còng excelen bồ chẳng tét"),
     ("a còng là ký hiệu gì", "a còng là ký hiệu gì"),
     ("chấm điểm giúp tôi rồi gửi family@example.test", "chấm điểm giúp tôi rồi gửi family@example.test"),

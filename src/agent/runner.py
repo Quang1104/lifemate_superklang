@@ -133,7 +133,7 @@ def moved_event_end(arguments: dict[str, Any], results: list[dict[str, Any]]) ->
     try:
         length = datetime.fromisoformat(old["end"]) - datetime.fromisoformat(old["start"])
         return {**arguments, "end": (datetime.fromisoformat(arguments["start"]) + length).isoformat()}
-    except (TypeError, ValueError):  # no such event, or timestamps this cannot read: leave the call alone
+    except (TypeError, ValueError, OverflowError):  # no usable event/timestamps: leave the call alone
         return arguments
 
 
@@ -228,13 +228,8 @@ def run_sample(sample: Sample, registry: ToolRegistry, planner: Planner,
                 *(prior.payload for prior in sample.prior_tool_results),
                 *(item.content for item in observations if item.kind == "untrusted_tool_result")]))
 
-        if os.environ.get("LIFEMATE_DUP_GUARD") == "1" and not action.name.startswith("sys."):
-            parameters = next((tool["parameters"] for tool in tools if tool["name"] == action.name), None)
-            if parameters is not None and any(tool["name"] == "sys.ask_missing_info" for tool in tools):
-                ask = same_name_ask(action.name, action.arguments, parameters, [
-                    item.content for item in observations if item.kind == "untrusted_tool_result"])
-                if ask is not None:
-                    action = ToolCall("sys.ask_missing_info", ask)
+        # A shared name does not prove ambiguity: the request/history may select by
+        # relation, date, time, author, or provider. Leave clarification to the planner.
 
         try:
             spec = registry.authorize(action.name, action.arguments, sample.installed_apps,

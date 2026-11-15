@@ -194,13 +194,13 @@ def spoken_email(text: str) -> str:
     """
     def joined(match: re.Match) -> str:
         parts = []
-        for part in match.group(1).split(" chấm "):
+        for part in re.split(r" chấm ", match.group(1), flags=re.IGNORECASE):
             head, *spoken = part.split()
             digits = number(tuple(word.lower() for word in spoken)) if spoken else ""
             if digits is None:
                 return match.group(0)  # the words after the name are not one number: leave the text alone
             parts.append(_ascii(head) + str(digits))
-        return ".".join(parts) + "@" + ".".join(map(_ascii, match.group(2).split(" chấm ")))
+        return ".".join(parts) + "@" + ".".join(map(_ascii, re.split(r" chấm ", match.group(2), flags=re.IGNORECASE)))
 
     return _EMAIL.sub(joined, normalize("NFC", text))
 
