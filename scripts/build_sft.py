@@ -9,10 +9,14 @@ IDs (and any other --exclude manifest) never enter the training file.
 (scripts/asr_transcripts.py), so training sees what inference sees. --fewshot-k adds retrieved
 TRAIN examples to every prompt through the same code and pool file inference uses. --mask-fraction and
 --rename-fraction rename the tools of disjoint shares of samples (opaque ids / other meaningful names).
+--history-turns adds a share of the assistant turns recorded in each sample's history as extra rows: the earlier
+turns are the history, that turn's user audio (ASR via --transcripts) is the request, and its recorded calls and
+results are the target, so no ToolEnv is needed.
 """
 
 import argparse
 from collections import Counter
+from dataclasses import replace
 import hashlib
 import json
 import os
@@ -20,6 +24,9 @@ import re
 from pathlib import Path
 from time import monotonic
 
+from jsonschema import Draft202012Validator
+
+from src.agent.asr_fix import wrapped
 from src.agent.fewshot import NATIVE_POOL, RESULT_CAP, configured
 from src.agent.native_planner import build_messages, tool_definitions
 from src.agent.planner import Observation, PlannerInput
@@ -175,6 +182,50 @@ def mask_tool_names(item: dict, fraction: float) -> dict:
     return renamed(item)
 
 
+def history_turn_rows(kit, row: dict, transcribe, tools: list[dict], fraction: float, totals: Counter) -> list[dict]:
+    """SFT rows for a stable `fraction` of the assistant turns recorded in `row`'s history (--history-turns).
+
+    Turn k keeps the history before its user turn, the user turn is the request (ASR when `transcribe` is set, through
+    the same asr_fix wrapper inference uses), and the recorded calls with their recorded results are the target. The
+    sample keeps the source ID, so retrieved examples never include the sample itself; the row ID gets "_h<k>".
+    """
+    if fraction <= 0:
+        return []
+    schemas = {tool["name"]: Draft202012Validator(tool["parameters"]) for tool in tools}
+    rows, user = [], None
+    for index, turn in enumerate(row["history"]):
+        if turn.get("role") == "user":
+            user = index
+            continue
+        if user is None or _share(f"{row['id']}#history{index}") >= fraction:
+            continue
+        calls = [call for call in turn.get("tool_calls") or () if isinstance(call, dict)]
+        results = list(turn.get("tool_results") or ())
+        if len(results) < len(calls) or any(
+                call.get("name") not in schemas or not isinstance(call.get("arguments"), dict)
+                or any(schemas[call["name"]].iter_errors(call["arguments"])) for call in calls):
+            totals["history_skipped_invalid_call"] += 1
+            continue
+        shortened = {**row, "history": row["history"][:user]}
+        try:
+            sample = _sample_from_row(kit, shortened, transcribe, monotonic() + 3_600, control_noop=False)
+            text = row["history"][user]["audio_text"]
+            if transcribe is not None:
+                audio = kit.audio_path(row["id"], row["history"][user]["audio"], history=True)
+                text = wrapped(transcribe, shortened)(audio)
+        except (CallbackError, KeyError):  # no usable text for one of the user turns in --transcripts
+            totals["history_skipped_no_transcript"] += 1
+            continue
+        if not isinstance(text, str) or not text.strip():
+            totals["history_skipped_no_transcript"] += 1
+            continue
+        item = conversation(replace(sample, user_request=text.strip()), tools, calls, results[:len(calls)])
+        rows.append({**item, "id": f"{row['id']}_h{index}"})
+        totals["history_rows"] += 1
+        totals["history_rows_without_calls"] += not calls
+    return rows
+
+
 def excluded_ids(manifests: list[Path]) -> set[str]:
     excluded = set()
     for manifest in manifests:
@@ -204,6 +255,8 @@ def main() -> None:
                         help="share of samples whose tool names are masked (training-only augmentation)")
     parser.add_argument("--rename-fraction", type=float, default=0.0,
                         help="share of samples (outside the masked share) whose tools get other meaningful names")
+    parser.add_argument("--history-turns", type=float, default=0.0,
+                        help="share of history assistant turns that become extra rows (no ToolEnv; recorded results)")
     parser.add_argument("--fewshot-k", type=int, default=0,
                         help="retrieved TRAIN examples per prompt; rewrites the native example pool")
     args = parser.parse_args()
@@ -211,6 +264,8 @@ def main() -> None:
         raise ValueError("Forbidden root")
     if min(args.mask_fraction, args.rename_fraction) < 0 or args.mask_fraction + args.rename_fraction > 1:
         raise ValueError("--mask-fraction and --rename-fraction must be >= 0 and sum to at most 1")
+    if not 0 <= args.history_turns <= 1:
+        raise ValueError("--history-turns must be between 0 and 1")
     excluded = excluded_ids(args.exclude)
     kit = OfficialKit(args.data_root, "train")
     reads = {tool["name"] for tool in kit.registry.available(frozenset(kit.app_names))
@@ -255,23 +310,27 @@ def main() -> None:
             except ToolRejected:
                 totals["skipped_preflight_rejected"] += 1
                 continue
-            item = mask_tool_names(conversation(sample, tools, calls, payloads), args.mask_fraction)
-            totals["masked"] += item["tools"] != tool_definitions(tools)
-            renamed = rename_tool_names(item, args.rename_fraction, args.mask_fraction)
-            totals["renamed"] += renamed is not item
-            item = renamed
-            totals["prompts_with_examples"] += "Ví dụ yêu cầu tương tự" in item["messages"][0]["content"]
-            sink.write(json.dumps(item, ensure_ascii=False) + "\n")
-            totals["written"] += 1
+            extra = history_turn_rows(kit, row, transcribe, tools, args.history_turns, totals)
+            for item in [conversation(sample, tools, calls, payloads), *extra]:
+                plain = item
+                item = mask_tool_names(item, args.mask_fraction)
+                totals["masked"] += item is not plain
+                renamed = rename_tool_names(item, args.rename_fraction, args.mask_fraction)
+                totals["renamed"] += renamed is not item
+                item = renamed
+                totals["prompts_with_examples"] += "Ví dụ yêu cầu tương tự" in item["messages"][0]["content"]
+                sink.write(json.dumps(item, ensure_ascii=False) + "\n")
+                totals["written"] += 1
+                lengths.append(len(json.dumps(item, ensure_ascii=False)))
             totals["assistant_calls"] += len(calls)
             totals["empty_gold"] += not calls
-            lengths.append(len(json.dumps(item, ensure_ascii=False)))
     lengths.sort()
     pick = lambda q: lengths[min(len(lengths) - 1, int(q * len(lengths)))] if lengths else None
     print(json.dumps({**totals, "excluded_ids": len(excluded), "chars_p50": pick(0.5), "chars_p95": pick(0.95),
                       "chars_max": lengths[-1] if lengths else None, "tokens": "NOT MEASURED (needs tokenizer)",
                       "transcripts": str(args.transcripts) if args.transcripts else "train", "fewshot_k": args.fewshot_k,
                       "mask_fraction": args.mask_fraction, "rename_fraction": args.rename_fraction,
+                      "history_turns": args.history_turns,
                       "output": str(args.output)}, ensure_ascii=False, indent=2))
 
 
