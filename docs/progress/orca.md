@@ -21,3 +21,19 @@ Brief: `lifemate-orca-ctx-brief.md` (root, 15/11). Chỉ CPU, chỉ viết docs.
 - v3 so với base (cùng ASR): 9 mẫu tăng (+20.42 điểm), 5 mẫu giảm (−10.67), ròng +9.75. v3 trọn điểm 12 mẫu, base 7,
   oracle 16. 9 mẫu oracle trọn điểm mà v3 chưa trọn (0177, 0280, 0286, 0578, 0781, 0937, 1012, 1015, 1161).
 - Tiếp: số liệu trên 1236 ID train (không dùng 40 ID smoke) làm căn cứ cho cách sửa ba nhóm đầu.
+
+## Bước 3 (15/11 12:55): căn cứ trên 1236 ID train cho cách sửa ba nhóm đầu
+
+- Đã làm: đo trên gold train ngoài 309 ID validation (script tạm, chỉ đọc `train.jsonl` và catalog).
+- Thiếu `ask_missing_info`: trong 104 lần gold hỏi một ID, 53 lần kết quả tra cứu ngay trước có các bản ghi trùng tên,
+  38 lần không, 13 lần hỏi ngay lời gọi đầu. Trong 954 lời gọi gold dùng một ID, chỉ 6 lần ID đó thuộc nhóm trùng tên.
+  Riêng `contacts.search`: 1 kết quả thì 107/107 dùng thẳng; ≥ 2 kết quả trùng tên thì 49/51 hỏi.
+  Gold hỏi một giá trị (không phải ID): 76 lần, nhiều nhất `ewallet.transfer.amount` 18, `reminders.create.time` 7.
+- Bỏ cuộc: đọc tay 89 mẫu train gold rỗng: 33 do cần app/khả năng không có trên máy, 26 đổi ý ("à thôi khỏi"),
+  11 điều kiện đã sai theo lịch sử, 10 trò chuyện, 5 yêu cầu không hợp lệ, 4 khác. Catalog train có 46 app,
+  mỗi mẫu cài 3–18 app (trung vị 9). v3 không còn bỏ cuộc sai (`missing_all_actions` 0) nhưng làm thừa trên gold rỗng.
+- Điều kiện: 474 câu train có từ điều kiện; 168 câu có bản sao Jaccard ≥ 0.5, trong đó 127 cùng chuỗi tool
+  (8 câu khác một đối số enum) và 41 khác chuỗi tool. Catalog không có chú giải tiếng Việt cho enum (`water`, `internet`).
+- Nhóm nhỏ: `calendar.update_event` gold luôn có `end` (27/27); `create_event` có `end` 23/34; `read_chat` không bao giờ
+  có `limit` (0/11); email đọc đánh vần ("a còng") 7/1236 câu; "N phút/tiếng nữa" 3/329 câu có đối số ngày giờ.
+- Tiếp: viết `docs/CONTEXT_PLAN.md`.
