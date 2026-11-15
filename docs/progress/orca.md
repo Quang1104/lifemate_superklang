@@ -120,3 +120,17 @@ Brief: `lifemate-orca-ctx-brief.md` (root, 15/11). Chỉ CPU, chỉ viết docs.
   1015: còn do ASR, 8.4 điểm).
 - Ba mẫu trùng tên (0086, 0350, 0413) v3_asrft đã trọn điểm, nên `LIFEMATE_DUP_GUARD` không còn điểm nào để lấy trên smoke40.
 - Tiếp: câu 2, tổng quát hoá sang 34 tool chỉ có ở public.
+
+## R-2 (15/11 18:40): tổng quát hoá sang tool chỉ có ở public
+
+- Catalog public: 122 tool, 34 tool / 11 app không có trong train (17 đọc, 17 ghi). Cả 34 có mô tả; 9/54 tham số không có mô tả
+  (`symbol`, `side`, `direction`, `address`, `payment`, `type`...); 14 tool có tham số ID. Bảng evidence trong
+  `src/tooling/lifemate_catalog.py` đã có đủ nguồn cho mọi `x-ref` của catalog public (0 loại ID không có tool sinh ra),
+  nên guard không chặn nhầm ID của tool lạ. Bảng chú giải enum của `CONTEXT_V4` đã gồm enum của catalog public.
+- Đầu vào public (634 mẫu, không nhãn, không transcript): 410 mẫu có cài ít nhất một app lạ; 120 mẫu có ≥ 30% tool cài là
+  tool lạ; 184 mẫu có lịch sử trợ lý đã gọi tool lạ; 419 mẫu có lịch sử (1299 lượt user). Số tool cài mỗi mẫu: trung vị 30
+  (train 31).
+- Truy hồi: mẫu public nào cũng có ≥ 97 dòng pool dùng được (trung vị 186), nhưng pool chỉ có tool của train, nên ví dụ
+  không bao giờ minh hoạ được tool lạ. Tỷ lệ yêu cầu public nhắm vào tool lạ và độ giống transcript: NOT MEASURED (không có
+  transcript). Chưa có phép đo sạch nào về tool chưa thấy: v3/v4 đều train trên cả 171 ID của split leave-app-out.
+- Tiếp: câu 3–5 (ngân sách thời gian, ASR lớn hơn, xử lý dữ liệu).
