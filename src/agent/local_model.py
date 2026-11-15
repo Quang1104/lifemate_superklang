@@ -11,6 +11,7 @@ import random
 from threading import Lock
 from time import monotonic
 import wave
+import unicodedata
 
 from ..inference.paths import safe_path
 from .planner import PlannerInput
@@ -538,6 +539,40 @@ def _read_audio(path: Path):
     return np.frombuffer(samples, dtype="<i2").astype(np.float32) / 32_768.0
 
 
+def _asr_prompt_names(context: dict | None) -> list[str]:
+    """Collect only short entity-name fields from released context, with bounded traversal."""
+    names, seen = [], set()
+    remaining = 512
+
+    def visit(value, depth=0):
+        nonlocal remaining
+        if remaining <= 0 or depth > 8 or len(names) >= 16:
+            return
+        remaining -= 1
+        if isinstance(value, dict):
+            for key, child in value.items():
+                if remaining <= 0 or len(names) >= 16:
+                    break
+                remaining -= 1
+                if (isinstance(key, str) and (key in {"name", "title", "city"} or key.endswith("_name"))
+                        and isinstance(child, str)):
+                    name = unicodedata.normalize("NFC", " ".join(child.split()))
+                    if (0 < len(name) <= 80 and name.isprintable() and any(c.isalpha() for c in name)
+                            and "<|" not in name and "|>" not in name and name.casefold() not in seen):
+                        seen.add(name.casefold())
+                        names.append(name)
+                elif isinstance(child, (dict, list, tuple)) and key != "installed_apps":
+                    visit(child, depth + 1)
+        elif isinstance(value, (list, tuple)):
+            for child in value:
+                if remaining <= 0 or len(names) >= 16:
+                    break
+                visit(child, depth + 1)
+
+    visit(context)
+    return names
+
+
 class LocalWhisper:
     """Transcribe the official 16 kHz WAV format with local Whisper weights."""
 
@@ -568,20 +603,25 @@ class LocalWhisper:
     def __call__(self, path: Path) -> str:
         return self.transcribe(path)
 
-    def transcribe(self, path: Path, *, deadline: float | None = None) -> str:
+    def transcribe_with_context(self, path: Path, *, context: dict, deadline: float | None = None) -> str:
+        return self.transcribe(path, deadline=deadline, context=context)
+
+    def transcribe(self, path: Path, *, deadline: float | None = None, context: dict | None = None) -> str:
         if not hasattr(self, "asr_metrics"):
             self.reset_metrics()
         metrics = {"path": str(path), "asr_ms": 0.0, "timing_complete": False,
                    "_asr_started": monotonic()}
         self.asr_metrics.append(metrics)
         try:
+            if os.environ.get("LIFEMATE_ASR_PROMPT") == "1":
+                return self._transcribe_timed(path, deadline=deadline, context=context)
             return self._transcribe_timed(path, deadline=deadline)
         finally:
             metrics["asr_ms"] = (monotonic() - metrics["_asr_started"]) * 1_000
             metrics.pop("_asr_started", None)
             metrics["timing_complete"] = True
 
-    def _transcribe_timed(self, path: Path, *, deadline: float | None) -> str:
+    def _transcribe_timed(self, path: Path, *, deadline: float | None, context: dict | None = None) -> str:
         _check_deadline(deadline)
         audio = _read_audio(path)
         long_audio = len(audio) > 16_000 * self._chunk_seconds
@@ -593,13 +633,23 @@ class LocalWhisper:
         def check_segment_deadline(_progress):
             _check_deadline(deadline)
 
+        prompt_options = {}
+        if os.environ.get("LIFEMATE_ASR_PROMPT") == "1":
+            prompt_names = []
+            for name in _asr_prompt_names(context):
+                ids = self._processor.get_prompt_ids(", ".join(prompt_names + [name]), return_tensors="pt")
+                if len(ids) > 64:  # leave room for Whisper's prefix and the unchanged 256-token output budget
+                    continue
+                prompt_names.append(name)
+                prompt_options["prompt_ids"] = ids.to(device=self._device)
+
         with _generation(self._torch, self._device, deadline):
             outputs = self._model.generate(
                 input_features=inputs["input_features"].to(device=self._device, dtype=self._dtype),
                 attention_mask=inputs["attention_mask"].to(device=self._device),
                 language="vi", task="transcribe", return_timestamps=long_audio,
                 monitor_progress=check_segment_deadline if deadline is not None else None,
-                **_generation_options(deadline, 256),
+                **_generation_options(deadline, 256), **prompt_options,
             )
             _check_deadline(deadline)
             return self._processor.batch_decode(

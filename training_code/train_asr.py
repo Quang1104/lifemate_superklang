@@ -62,7 +62,7 @@ def main() -> None:
         raise ValueError("Forbidden root")
 
     import torch
-    from transformers import AutoProcessor, WhisperForConditionalGeneration, get_linear_schedule_with_warmup
+    from transformers import AutoConfig, AutoProcessor, WhisperForConditionalGeneration, get_linear_schedule_with_warmup
 
     from src.agent.local_model import _read_audio
     from src.inference.official import OfficialKit
@@ -76,12 +76,27 @@ def main() -> None:
     evaluation = utterances(kit, lambda i: i in validation, history=False)
     print(json.dumps({"train_utterances": len(train), "eval_utterances": len(evaluation)}), flush=True)
 
-    processor = AutoProcessor.from_pretrained(args.model_dir)
+    processor = AutoProcessor.from_pretrained(args.model_dir, local_files_only=True)
     processor.tokenizer.set_prefix_tokens(language="vietnamese", task="transcribe")
-    model = WhisperForConditionalGeneration.from_pretrained(args.model_dir, torch_dtype=torch.float32).cuda()
+    # Validate decoder targets before starting GPU work; never truncate away transcript text/EOS.
+    config = AutoConfig.from_pretrained(args.model_dir, local_files_only=True)
+    train_labels = {}
+    for path, text in train:
+        ids = processor.tokenizer(text).input_ids
+        if ids and ids[0] == config.decoder_start_token_id:
+            ids = ids[1:]  # forward() inserts the decoder start token when shifting labels
+        if not ids or len(ids) > config.max_target_positions:
+            raise ValueError(f"Invalid label length {len(ids)} for {path}; limit {config.max_target_positions}")
+        train_labels[path] = ids
+
+    model = WhisperForConditionalGeneration.from_pretrained(
+        args.model_dir, torch_dtype=torch.float32, attn_implementation="sdpa", local_files_only=True,
+    ).cuda()
+    # Full fine-tuning retains encoder/decoder activations unless checkpointing is enabled.
+    model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
+    model.config.use_cache = False
     model.config.forced_decoder_ids = None
     model.generation_config.forced_decoder_ids = None
-    start_id = model.config.decoder_start_token_id
 
     def features(paths):
         audio = [_read_audio(path) for path in paths]
@@ -94,7 +109,7 @@ def main() -> None:
             for begin in range(0, len(evaluation), args.batch):
                 chunk = evaluation[begin:begin + args.batch]
                 out = model.generate(input_features=features([p for p, _ in chunk]), language="vi",
-                                     task="transcribe", max_new_tokens=256)
+                                     task="transcribe", max_new_tokens=256, use_cache=True)
                 texts = processor.batch_decode(out, skip_special_tokens=True)
                 pairs += [(ref, hyp) for (_, ref), hyp in zip(chunk, texts)]
         model.train()
@@ -103,7 +118,7 @@ def main() -> None:
     best = evaluate()
     print(json.dumps({"epoch": 0, "wer": round(best, 4)}), flush=True)
     steps = args.epochs * ((len(train) + args.batch - 1) // args.batch)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=0.01)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=0.01, foreach=False)
     schedule = get_linear_schedule_with_warmup(optimizer, min(50, steps // 10), steps)
     started, step = time.time(), 0
     model.train()
@@ -111,8 +126,7 @@ def main() -> None:
         random.shuffle(train)
         for begin in range(0, len(train), args.batch):
             chunk = train[begin:begin + args.batch]
-            labels = [processor.tokenizer(text).input_ids for _, text in chunk]
-            labels = [ids[1:] if ids and ids[0] == start_id else ids for ids in labels]  # the model prepends it
+            labels = [train_labels[path] for path, _ in chunk]
             width = max(map(len, labels))
             labels = torch.tensor([ids + [-100] * (width - len(ids)) for ids in labels]).cuda()
             with torch.autocast("cuda", dtype=torch.bfloat16):
@@ -130,10 +144,12 @@ def main() -> None:
         if score < best:
             best = score
             args.output_dir.mkdir(parents=True, exist_ok=True)
-            # fp16 copy on disk; the fp32 weights the optimizer holds stay untouched.
-            half = {name: tensor.half() for name, tensor in model.state_dict().items()}
+            # Copy directly to CPU so serialization does not allocate a second model on the GPU.
+            half = {name: tensor.detach().to(device="cpu", dtype=torch.float16)
+                    for name, tensor in model.state_dict().items()}
             model.save_pretrained(args.output_dir, state_dict=half, safe_serialization=True)
             processor.save_pretrained(args.output_dir)
+            del half
             print(json.dumps({"saved": str(args.output_dir), "epoch": epoch}), flush=True)
     print(json.dumps({"best_wer": round(best, 4)}), flush=True)
 

@@ -3,6 +3,7 @@
 from collections.abc import Callable, Iterable, Iterator
 from dataclasses import replace
 import json
+import os
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from time import monotonic
@@ -20,10 +21,14 @@ Transcribe = Callable[[Path], str]
 
 
 def _transcribe(kit: OfficialKit, sample_id: str, item: dict[str, Any], transcribe: Transcribe,
-                deadline: float, *, history: bool) -> str:
+                deadline: float, *, history: bool, context: dict | None = None) -> str:
     audio_path = kit.audio_path(sample_id, item["audio"], history=history)
     deadline_transcriber = getattr(transcribe, "transcribe", None)
-    if callable(deadline_transcriber):
+    contextual = (getattr(transcribe, "transcribe_with_context", None)
+                  if os.environ.get("LIFEMATE_ASR_PROMPT") == "1" else None)
+    if callable(contextual):
+        callback = lambda: contextual(audio_path, deadline=deadline - 0.1, context=context)
+    elif callable(deadline_transcriber):
         callback = lambda: deadline_transcriber(audio_path, deadline=deadline - 0.1)
     else:
         callback = lambda: transcribe(audio_path)
@@ -44,7 +49,12 @@ def _sample_from_row(kit: OfficialKit, row: dict[str, Any], transcribe: Transcri
     if transcribe is None:
         user_text = row["audio_text"]
     else:
-        user_text = _transcribe(kit, sample_id, row, transcribe, deadline, history=False)
+        prompt_context = None
+        if os.environ.get("LIFEMATE_ASR_PROMPT") == "1":
+            prompt_context = {"context": row["context"], "entities": [
+                turn.get("tool_results", []) for turn in row["history"] if turn.get("role") == "assistant"
+            ]}
+        user_text = _transcribe(kit, sample_id, row, transcribe, deadline, history=False, context=prompt_context)
 
     history = []
     prior = []
@@ -52,6 +62,8 @@ def _sample_from_row(kit: OfficialKit, row: dict[str, Any], transcribe: Transcri
         if item.get("role") == "user":
             text = item["audio_text"] if transcribe is None else _transcribe(
                 kit, sample_id, item, transcribe, deadline, history=True,
+                context=({"context": row["context"], "entities": [p.payload for p in prior]}
+                         if os.environ.get("LIFEMATE_ASR_PROMPT") == "1" else None),
             )
             history.append(encode_json({"role": "user", "text": text}, max_bytes=32_000))
         elif item.get("role") == "assistant":
