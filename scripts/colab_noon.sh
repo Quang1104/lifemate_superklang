@@ -11,7 +11,6 @@ score() { python -c "import json;print(json.load(open('$R/smoke_ab/$1/native.sco
 V3=$(score v3) && FT=$(score v3_asrft) || exit 1
 echo "SMOKE v3 $V3 v3_asrft $FT"
 if python -c "import sys;sys.exit(0 if $FT >= $V3 + 5 else 1)"; then
-  mv "$M/asr" "$M/asr_base" && ln -s "$M/asr_ft" "$M/asr" || exit 1  # public() always reads $M/asr
-  public "$M/sft_v3" v3_asrft LIFEMATE_NATIVE_FEWSHOT_K=2
+  ASR_DIR="$M/asr_ft" public "$M/sft_v3" v3_asrft LIFEMATE_NATIVE_FEWSHOT_K=2
 fi
 date; echo NOON_DONE
