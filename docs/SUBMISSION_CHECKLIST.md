@@ -52,7 +52,6 @@ ghi vào `<archive>.manifest.json` cùng SHA256 của adapter, SHA256 của ASR 
 |---|---|
 | v3 + ASR fine-tune | `powershell.exe -NoProfile -File .\docker\release.ps1 -AdapterDir <adapter v3>` |
 | v4 | `powershell.exe -NoProfile -File .\docker\release.ps1 -AdapterDir <adapter v4> -Flags "LIFEMATE_CONTEXT_V4=1,LIFEMATE_SMALL_FIXES=1"` |
-| v4 có guard trùng tên | như v4, thêm `,LIFEMATE_DUP_GUARD=1` vào `-Flags` |
 | v5 | `powershell.exe -NoProfile -File .\docker\release.ps1 -AdapterDir <adapter v5> -Flags "LIFEMATE_CONTEXT_V4=1,LIFEMATE_SMALL_FIXES=1,LIFEMATE_DATE_TABLE=1"` |
 
 Sau khi build, đối chiếu cờ trong image với manifest: `docker image inspect <tag> --format '{{json .Config.Env}}'`.
