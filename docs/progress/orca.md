@@ -242,3 +242,12 @@ Brief: `lifemate-orca-ctx-brief.md` (root, 15/11). Chỉ CPU, chỉ viết docs.
 - Theo lịch sử: TRAIN gold gọi lại app của lịch sử ở 303/766 mẫu (40%); public dự đoán 113/184 (61%) khi lịch sử dùng app
   public-only, 94/288 (33%) khi lịch sử dùng app train. Chưa đủ để kết luận đúng sai.
 - Tiếp: câu 3, xếp hạng thay đổi cho v5/v6, viết `docs/PUBLIC_GAP.md`.
+
+## G-3 (15/11 20:25): xếp hạng thay đổi, viết xong `docs/PUBLIC_GAP.md`
+
+- Đã làm: `docs/PUBLIC_GAP.md` (59 dòng): khoảng cách và sai số, bảng tín hiệu, 4 thay đổi xếp hạng (giữ masking 30% của v5;
+  v6 đổi tên có nghĩa; bỏ ví dụ khi không có ví dụ gần, chọn ngưỡng trên leave-app-out; đo tool chưa thấy bằng adapter
+  leave-app-out), danh sách không làm.
+- Số thêm: catalog train có 79/246 tham số không mô tả (39 bắt buộc), public 68/219 (31 bắt buộc); bản build masking đủ TRAIN
+  có 61/398 mẫu bị mask mà lượt đích hỏi `ask_missing_info` về tool đã mask.
+- Trần ghi theo số mẫu public mang tín hiệu × 100/634; mọi mức tăng: NOT MEASURED.
