@@ -57,3 +57,23 @@ thành trọn điểm. Không phải dự báo; không có nhãn để biết c�
 - Viết tay mô tả cho tham số của tool public: là chỉnh theo catalog public, và train cũng thiếu mô tả với tỷ lệ tương tự.
 - Đổi masking từ 30% lên 50% trước khi có kết quả public của v5 hoặc phép đo mục 4: không có căn cứ chọn số.
 - Dựa vào smoke40 để chọn giữa v4/v5/v6 cho phần tool lạ: smoke40 không có tool lạ.
+
+## Tín hiệu của v4 trên 261 mẫu đầu (16/11, `research/public_signals.py`)
+
+`python -B -m research.public_signals <submission.jsonl> [--compare other.jsonl] [--first N]` tính lại các tín hiệu trên cho
+một file nộp bất kỳ; chạy trên `v3_asrft` cho đúng các số ở bảng trên (8/317, 52/709, 53/226, 18/184, 14/224, 67/472).
+`mixed2_v4_261.jsonl` có 261 dòng đầu là v4 (134 dòng khác v3), so với v3 + ASR fine-tune trên cùng 261 ID:
+
+| Tín hiệu | v4 | v3 + ASR fine-tune |
+|---|---|---|
+| Hỏi thiếu, app chỉ có ở public | 7/67 (10.4%) | 5/71 (7.0%) |
+| Hỏi thiếu, app của train | 41/400 (10.2%) | 38/410 (9.3%) |
+| Cuối là lệnh đọc: có app public-only, lịch sử chưa dùng | 7/56 (12.5%) | 5/56 (8.9%) |
+| Cuối là lệnh đọc: không có app public-only | 6/179 (3.4%) | 9/179 (5.0%) |
+| App public-only đã cài không được gọi, gọi app train anh em | 18/71 (25.4%) | 22/67 (32.8%) |
+| Mẫu gọi tool public-only | 62/261 (23.8%) | 63/261 (24.1%) |
+| Lời gọi mỗi mẫu | 2.76 | 2.79 |
+
+- 261 ID đầu nghiêng về app của train: chỉ 82/261 mẫu có app public-only (cả tập: 410/634), nên file trộn 42.07 chủ yếu thử v4
+  trên mẫu giống train, chưa thử trên phần tool lạ.
+- Trên 261 ID đó các tín hiệu của v4 và v3 gần như nhau; không tín hiệu nào cho thấy v4 xử lý tool lạ khác v3.

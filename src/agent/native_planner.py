@@ -13,6 +13,7 @@ import os
 
 from .fewshot import RESULTS_BUDGET, native_examples, native_k
 from .planner import PlannerInput
+from .time_hints_v8 import render_time_hints
 
 _SYSTEM = """Bạn là LifeMate, trợ lý giọng nói tiếng Việt điều khiển các ứng dụng của người dùng bằng tool.
 Câu của người dùng là bản chép lời nói, có thể sai chính tả nhẹ.
@@ -191,6 +192,11 @@ def build_messages(request: PlannerInput) -> list[dict]:
         date_table = render_date_table(context.get("current_time"))
         if date_table:
             system += "\n\n" + date_table
+    if os.environ.get("LIFEMATE_TIME_HINTS_V8") == "1":
+        # Dates and times the request states, already computed from the sample clock (same text in training rows).
+        time_hints = render_time_hints(sample.user_request, context)
+        if time_hints:
+            system += "\n\n" + time_hints
     apps = context.get("apps") if _context_v4() else None
     if isinstance(apps, dict) and apps.get("missing"):
         system += "\n\n" + "\n".join((
