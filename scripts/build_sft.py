@@ -12,6 +12,7 @@ TRAIN examples to every prompt through the same code and pool file inference use
 
 import argparse
 from collections import Counter
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -40,6 +41,23 @@ def conversation(sample, tools: list[dict], calls: list[dict], payloads: list[di
             "target_start": target_start}
 
 
+def mask_tool_names(item: dict, fraction: float) -> dict:
+    """Function masking (Hammer): in a stable `fraction` of samples, rename every non-sys tool to an opaque id.
+
+    Training only. The model must read descriptions instead of memorising names, which is what unseen public
+    tools need. Names contain a dot, so whole-name replacement in the serialized sample is unambiguous.
+    """
+    digest = lambda text: hashlib.sha256(text.encode("utf-8")).hexdigest()
+    if fraction <= 0 or int(digest(item["id"])[:8], 16) / 0xFFFFFFFF >= fraction:
+        return item
+    names = sorted((tool["function"]["name"] for tool in item["tools"]
+                    if not tool["function"]["name"].startswith("sys.")), key=len, reverse=True)
+    text = json.dumps(item, ensure_ascii=False)
+    for name in names:  # longest first, so a name never clobbers a longer one that contains it
+        text = text.replace(name, f"fn_{digest(item['id'] + name)[:8]}")
+    return json.loads(text)
+
+
 def excluded_ids(manifests: list[Path]) -> set[str]:
     excluded = set()
     for manifest in manifests:
@@ -65,6 +83,8 @@ def main() -> None:
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--transcripts", type=Path,
                         help="JSONL from scripts/asr_transcripts.py; user turns use this ASR text")
+    parser.add_argument("--mask-fraction", type=float, default=0.0,
+                        help="share of samples whose tool names are masked (training-only augmentation)")
     parser.add_argument("--fewshot-k", type=int, default=0,
                         help="retrieved TRAIN examples per prompt; rewrites the native example pool")
     args = parser.parse_args()
@@ -114,7 +134,8 @@ def main() -> None:
             except ToolRejected:
                 totals["skipped_preflight_rejected"] += 1
                 continue
-            item = conversation(sample, tools, calls, payloads)
+            item = mask_tool_names(conversation(sample, tools, calls, payloads), args.mask_fraction)
+            totals["masked"] += item["tools"] != tool_definitions(tools)
             sink.write(json.dumps(item, ensure_ascii=False) + "\n")
             totals["written"] += 1
             totals["assistant_calls"] += len(calls)
@@ -125,6 +146,7 @@ def main() -> None:
     print(json.dumps({**totals, "excluded_ids": len(excluded), "chars_p50": pick(0.5), "chars_p95": pick(0.95),
                       "chars_max": lengths[-1] if lengths else None, "tokens": "NOT MEASURED (needs tokenizer)",
                       "transcripts": str(args.transcripts) if args.transcripts else "train", "fewshot_k": args.fewshot_k,
+                      "mask_fraction": args.mask_fraction,
                       "output": str(args.output)}, ensure_ascii=False, indent=2))
 
 
