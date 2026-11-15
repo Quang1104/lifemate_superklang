@@ -4,6 +4,8 @@
 Build and export the LifeMate image. Base planner and ASR weights are downloaded inside the build
 (pinned revisions in configs/colab_models.json) and the QLoRA adapter is merged there, so the only
 local input is the adapter folder (~130 MB).
+A fine-tuned ASR (training_code/train_asr.py output, ~1.5 GB) placed in <AdapterDir>sr replaces
+the pinned PhoWhisper download (docker/fetch_models.py).
 .EXAMPLE
 powershell.exe -NoProfile -File .\docker\release.ps1 -CheckOnly
 powershell.exe -NoProfile -File .\docker\release.ps1 -AdapterDir C:\lifemate_release\qlora_native

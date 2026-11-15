@@ -30,4 +30,7 @@ COPY research/validation_split.json ./research/validation_split.json
 
 ARG PLANNER_MODE=native
 ENV LIFEMATE_PLANNER_MODE=${PLANNER_MODE}
+# Retrieved TRAIN examples in the native prompt; planner v3 was trained with 2 and must run with 2.
+ARG NATIVE_FEWSHOT_K=2
+ENV LIFEMATE_NATIVE_FEWSHOT_K=${NATIVE_FEWSHOT_K}
 CMD ["/code/predict.sh"]

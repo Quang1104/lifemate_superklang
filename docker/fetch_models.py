@@ -20,7 +20,11 @@ PATTERNS = ["*.json", "*.jinja", "*.safetensors", "*.bin", "merges.txt", "LICENS
 def main(adapter: str, base: str = "/tmp/base", planner: str = "/models/planner", asr: str = "/models/asr") -> None:
     pins = json.loads((Path(__file__).resolve().parent / "configs" / "colab_models.json").read_text(encoding="utf-8"))
     snapshot_download(**pins["fallback_planner"], local_dir=base, allow_patterns=PATTERNS)
-    snapshot_download(**pins["asr"], local_dir=asr, allow_patterns=PATTERNS)
+    tuned = Path(adapter) / "asr"  # optional fine-tuned ASR (training_code/train_asr.py output) shipped with the adapter
+    if (tuned / "config.json").is_file():
+        shutil.copytree(tuned, asr)
+    else:
+        snapshot_download(**pins["asr"], local_dir=asr, allow_patterns=PATTERNS)
     print("merged", merge(Path(base), Path(adapter), Path(planner)), "LoRA modules into", planner, flush=True)
     shutil.rmtree(base)
     for directory in (Path(asr), Path(planner)):
