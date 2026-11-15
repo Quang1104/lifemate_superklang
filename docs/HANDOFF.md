@@ -151,3 +151,4 @@ Tests: mỗi làn thêm test vào file `tests/test_<làn>_*.py` riêng để tr�
 - 16/11 01:29 A100 (song song): public v6 396/634; QLoRA v7 bước 60/327 lúc 1,651 s (~27.5 s/bước khi chia GPU), SFT v7 2621/2621 dòng, token p50 6,320, max 11,185. GPU 100%, 29.3 GB.
 - 16/11 02:06 A100: **public v6_asrft xong** (634 dòng, md5 bd3cc13f988ddae38afb668fa7ad5f94), Drive `lifemate_results/public/v6_asrft/submission.jsonl`; điểm portal NOT MEASURED (người dùng nộp khi dậy). Chrome chặn lần tải tự động thứ hai nên chưa có bản trên máy. QLoRA v7 bước 130/327 lúc 01:59; giờ chạy một mình trên GPU.
 - 16/11 02:38 A100: QLoRA v7 bước 260/327 (~17 s/bước khi chạy một mình). Chạy song song **VAL309 cho v4** (mốc so sánh v7; `scripts/colab_val.sh $M/sft_v4 v4_asrft`, log `/content/val_v4.log`, kết quả `$R/val309/v4_asrft`).
+- 16/11 03:08 A100: QLoRA v7 xong 327/327; smoke40 v7 và VAL309 v4 đang chạy song song.
