@@ -228,3 +228,17 @@ Brief: `lifemate-orca-ctx-brief.md` (root, 15/11). Chỉ CPU, chỉ viết docs.
   chỉ đọc 4.9%, cuối là đọc 6.2%. Có app public-only nhưng lịch sử chưa dùng (226): cuối là đọc 23.5%, hỏi 8.0%.
   Lịch sử đã dùng tool public-only (184): 1.8 lời gọi/mẫu, hỏi 2.2%.
 - Tiếp: câu 2, tín hiệu thất bại trên từng tool public-only.
+
+## G-2 (15/11 20:10): tín hiệu thất bại trên tool public-only (không dùng nhãn)
+
+- Hỏi thiếu: trong các app mà mẫu có gọi hoặc hỏi tới, tỷ lệ có `ask_missing_info` cho app đó: TRAIN gold 180/2012 (8.9%);
+  public, app của train 52/709 (7.3%); public, app public-only 8/317 (2.5%).
+- Dừng sau lệnh đọc: lời gọi cuối là lệnh đọc ở 85/634 mẫu public (47 là tool public-only, 38 tool train) so với 105/1236 TRAIN
+  gold (8.5%). Nhóm có app public-only mà lịch sử chưa dùng: 23.5%; lịch sử đã dùng: 9.8%; không có app public-only: 6.2%.
+- Thay bằng app train "anh em": 472 cặp (mẫu, app public-only đã cài nhưng không gọi), trong đó 67 cặp model gọi một app train
+  cùng loại (vd. grocery → shopping_list, train_bus_tickets → flights). Đúng hay sai: NOT MEASURED.
+- Tham số không có mô tả: `stocks.*.symbol` nhận tên công ty thay cho mã ở 5/40 giá trị ("Vitech" ×3, "VITECH", "Bắc Hà Bank").
+- Không thấy lệch: tỷ lệ lời gọi app có kèm lệnh ghi (public-only 72%, TRAIN gold 70%); 0 tool không cài; 0 lời gọi lặp.
+- Theo lịch sử: TRAIN gold gọi lại app của lịch sử ở 303/766 mẫu (40%); public dự đoán 113/184 (61%) khi lịch sử dùng app
+  public-only, 94/288 (33%) khi lịch sử dùng app train. Chưa đủ để kết luận đúng sai.
+- Tiếp: câu 3, xếp hạng thay đổi cho v5/v6, viết `docs/PUBLIC_GAP.md`.
