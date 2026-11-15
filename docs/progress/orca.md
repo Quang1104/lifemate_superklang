@@ -97,3 +97,11 @@ Brief: `lifemate-orca-ctx-brief.md` (root, 15/11). Chỉ CPU, chỉ viết docs.
   (`outputs/asr_train.jsonl`); không đổi câu nào khác. Với ASR đã fine-tune: NOT MEASURED.
 - Test: `python -B -m pytest -q -p no:cacheprovider` → 344 passed, 1 skipped; `python -B -m src.inference mock --samples 40` → 40/40.
 - Tiếp: mục "Đã làm" trong `docs/CONTEXT_PLAN.md`.
+
+## V4-4 (15/11 15:15): ghi mục "Đã làm" trong `docs/CONTEXT_PLAN.md`
+
+- Đã làm: bảng ba cờ, số đo CPU và lệnh chính xác; kiểm trên kit thật: với `LIFEMATE_CONTEXT_V4=1`, prompt và định nghĩa
+  tool lúc suy luận trùng bản ghi SFT ở 50/50 ID train lấy mẫu; mỗi mẫu liệt kê 29–40 app không cài.
+- Trạng thái: cả ba cờ đã commit, test 344 passed / 1 skipped, mock 40/40. Chưa push.
+- Việc của root: thêm cờ vào `scripts/colab_v4.sh` (`LIFEMATE_CONTEXT_V4=1` cho cả `build_sft.py` và suy luận;
+  `LIFEMATE_DUP_GUARD=1`, `LIFEMATE_SMALL_FIXES=1` lúc suy luận). Mọi điểm số: NOT MEASURED.

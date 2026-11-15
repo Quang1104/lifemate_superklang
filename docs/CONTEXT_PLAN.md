@@ -118,3 +118,31 @@ Cả hai đổi prompt nên cần train lại. Trần trên lượt oracle: 13.1
 
 Điểm của mọi đề xuất; v3 với transcript gold; số token và độ trễ thêm của 3.2 và 3.3; tỷ lệ bản sao và app không cài trên
 public test; hành vi của guard 3.1 khi model chọn ID từ lịch sử thay vì từ lượt hiện tại.
+
+## Đã làm (15/11 15:15, CPU; mọi điểm số: NOT MEASURED)
+
+Ba cờ, mặc định tắt. Tắt cờ thì prompt và lời gọi không đổi: build SFT mặc định và `--fewshot-k 2` trùng byte với bản trước.
+`<kit>` = thư mục `train+public_test`.
+
+| Cờ | Làm gì | Ở đâu | Cần train |
+|---|---|---|---|
+| `LIFEMATE_DUP_GUARD=1` | Mục 3.1: ID thuộc nhóm bản ghi trùng tên trong kết quả của lượt hiện tại → `sys.ask_missing_info{"tool_name": T, "params": [p]}` | `runner.py`, trước `registry.authorize` | không |
+| `LIFEMATE_CONTEXT_V4=1` | Mục 3.2 + 3.3: ba dòng app đã cài / không cài; ví dụ in từng lệnh, lệnh đọc kèm `⇒ kết quả` (cắt 500 ký tự, ngân sách 6000); chú giải 85 giá trị enum | `pipeline._sample_from_row`, `native_planner.build_messages` / `tool_definitions`, `fewshot.select`, pool do `build_sft.py --fewshot-k` ghi | có; đặt cờ cho cả `build_sft.py` và suy luận |
+| `LIFEMATE_SMALL_FIXES=1` | Mục 4: bù `end` cho `calendar.update_event`; ghép email đọc đánh vần | `runner.py`; lớp bọc transcriber trong `asr_fix.py` | không (phần email đổi transcript, nên đặt cả khi build SFT) |
+
+Số đo:
+
+- Guard trùng tên trên gold của 1236 ID train: đổi 6/979 lời gọi dùng ID; tái tạo đúng 53/112 lần gold hỏi một ID.
+  `python -B -m scripts.orca_v4_measure dup --data-root <kit>`
+- `CONTEXT_V4` trên smoke40 (K=2, transcript gold): system prompt thêm median 2034 ký tự (p95 3041, max 3110); định nghĩa
+  tool thêm median 650 (p95 1096); tổng thêm median 2505 (p95 3778, max 3885). Bản ghi SFT: ký tự p50 18,214 → 20,667,
+  max 33,193 → 37,872. Trên kit thật, prompt và định nghĩa tool lúc suy luận trùng bản ghi SFT ở 50/50 ID train lấy mẫu.
+  `python -B -m scripts.orca_v4_measure prompt --data-root <kit>`
+- `SMALL_FIXES` trên 1236 ID train: 27/27 lời gọi gold dời `start` có `end` = `start` mới + thời lượng cũ; luật email ra đúng
+  địa chỉ gold ở 7/7 câu đọc đánh vần với transcript gold, 0/7 với transcript PhoWhisper-medium, không đổi câu nào khác.
+  `python -B -m scripts.orca_v4_measure small --data-root <kit>`
+- Test: `python -B -m pytest -q -p no:cacheprovider` → 344 passed, 1 skipped; `python -B -m src.inference mock --samples 40` → 40/40.
+
+Lưu ý cho lượt GPU: pool `src/agent/data/fewshot_native.jsonl` đã đổi (thêm `results`, 1,085,562 byte), sau `build_sft.py
+--fewshot-k 2` thì `git status` phải sạch. Số token của prompt v4 chưa đo; v3 có max 9,714 token ở 33,193 ký tự, nên với
+`--max-tokens 12000` cần xem dòng `rows` của `train_qlora.py` để biết có mẫu nào bị loại.
