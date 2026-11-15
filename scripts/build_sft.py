@@ -15,6 +15,7 @@ from collections import Counter
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 from time import monotonic
 
@@ -45,17 +46,28 @@ def mask_tool_names(item: dict, fraction: float) -> dict:
     """Function masking (Hammer): in a stable `fraction` of samples, rename every non-sys tool to an opaque id.
 
     Training only. The model must read descriptions instead of memorising names, which is what unseen public
-    tools need. Names contain a dot, so whole-name replacement in the serialized sample is unambiguous.
+    tools need. Only whole names are replaced: "music.play" inside the x-ref kind "music.playlists" stays.
     """
     digest = lambda text: hashlib.sha256(text.encode("utf-8")).hexdigest()
     if fraction <= 0 or int(digest(item["id"])[:8], 16) / 0xFFFFFFFF >= fraction:
         return item
     names = sorted((tool["function"]["name"] for tool in item["tools"]
                     if not tool["function"]["name"].startswith("sys.")), key=len, reverse=True)
-    text = json.dumps(item, ensure_ascii=False)
-    for name in names:  # longest first, so a name never clobbers a longer one that contains it
-        text = text.replace(name, f"fn_{digest(item['id'] + name)[:8]}")
-    return json.loads(text)
+    if not names:
+        return item
+    # Longest first, so a name never clobbers a longer one that contains it.
+    whole = re.compile(r"(?<![\w.])(?:" + "|".join(map(re.escape, names)) + r")(?!\w)")
+
+    def renamed(value):
+        if isinstance(value, str):
+            return whole.sub(lambda match: f"fn_{digest(item['id'] + match.group())[:8]}", value)
+        if isinstance(value, list):
+            return [renamed(entry) for entry in value]
+        if isinstance(value, dict):
+            return {key: renamed(entry) for key, entry in value.items()}
+        return value
+
+    return renamed(item)
 
 
 def excluded_ids(manifests: list[Path]) -> set[str]:

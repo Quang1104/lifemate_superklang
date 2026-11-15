@@ -185,3 +185,19 @@ Brief: `lifemate-orca-ctx-brief.md` (root, 15/11). Chỉ CPU, chỉ viết docs.
 - Đã làm: mô tả cờ, lệnh đo, số đo (0/161 và 11/11), và giới hạn: trên smoke40 chỉ 0131 rơi vào luật (2.5 điểm đang mất),
   0665 không được sửa, và mẫu được cứu vẫn thừa một lời gọi nên không trọn điểm.
 - Trạng thái: đã commit, chưa push. Root cần thêm `LIFEMATE_CONTACT_RETRY=1` vào lệnh suy luận nếu muốn bật.
+
+# Việc phát hành (brief `lifemate-orca-release-brief.md`)
+
+## P-1 (15/11): review masking v5 (`3dbe746`), sửa một lỗi
+
+- Build đủ TRAIN trên CPU với `--mask-fraction 0.3 --fewshot-k 0` (và thêm một lượt với `LIFEMATE_CONTEXT_V4=1
+  LIFEMATE_DATE_TABLE=1 --fewshot-k 2`): 398/1236 mẫu bị mask (32.2%); 0 lời gọi có tên không nằm trong tool của mẫu;
+  0 `ask_missing_info.tool_name` lệch; 0 tên gốc còn sót trong mẫu bị mask; 0 tên mask trùng nhau; `totals["masked"]` = 398 khớp.
+  Không cặp tên tool nào trong catalog chứa nhau. Ví dụ và kết quả của `CONTEXT_V4` được mask nhất quán.
+- Lỗi thật: thay chuỗi không xét ranh giới làm hỏng hai loại `x-ref` trong định nghĩa tool: `music.playlists` (192 chỗ) và
+  `flights.bookings` (52 chỗ) thành `fn_<hash>lists` / `fn_<hash>ings`, ở 120 mẫu bị mask. Không ảnh hưởng lời gọi.
+- Sửa: `mask_tool_names` chỉ thay tên trọn vẹn (regex có ranh giới, đi từng chuỗi thay vì trên JSON đã dump).
+  File: `scripts/build_sft.py`, `tests/test_orca_mask_whole_names.py`. Build lại: 398 mẫu mask, 0 tên mask dính chữ,
+  120 mẫu khác bản cũ và chỉ khác ở hai loại `x-ref` đó.
+- Test: `python -B -m pytest -q -p no:cacheprovider` → xem P-2 (chạy lại cả bộ sau phần Docker).
+- Tiếp: phần 2, cờ của bản được chọn trong Docker.
