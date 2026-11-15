@@ -214,3 +214,17 @@ Brief: `lifemate-orca-ctx-brief.md` (root, 15/11). Chỉ CPU, chỉ viết docs.
   đầu vào hợp lệ, 0 cờ với đầu vào rỗng, mã lỗi 1 với tên lạ. Máy này chặn chạy file `.ps1` (execution policy), nên chưa chạy
   cả script và chưa build image: NOT MEASURED.
 - Test: `python -B -m pytest -q -p no:cacheprovider` → 379 passed, 1 skipped; `python -B -m src.inference mock --samples 40` → 40/40.
+
+# Khoảng cách public / smoke (brief `lifemate-orca-gap-brief.md`, 15/11 19:45): kết quả ở `docs/PUBLIC_GAP.md`
+
+## G-1 (15/11 19:55): phân bố lời gọi của v3_asrft trên public, smoke40 và TRAIN gold
+
+- Nguồn: `outputs/colab/public_drive/public/{v3,v3_asrft}/submission.jsonl` (chỉ dự đoán), `smoke_ab/v3_asrft/native.jsonl`,
+  gold TRAIN. Không có nhãn public; mọi số là thống kê tổng hợp trên đầu ra của chính mình.
+- Public v3_asrft (634): rỗng 4.6%, 2.5 lời gọi/mẫu, mẫu có `ask_missing_info` 9.5%, 45.0% mẫu gọi ít nhất một tool chỉ có ở
+  public (33.3% số lời gọi), 0 lời gọi tool không cài, 0 lời gọi lặp; chỉ đọc (không ghi, không hỏi) 11.2%, lời gọi cuối là
+  lệnh đọc 13.4%. TRAIN gold 1236: rỗng 7.2%, hỏi 14.6%, chỉ đọc 7.8%, cuối là đọc 8.5%.
+- Tách theo app chỉ có ở public: có cài (410) → hỏi 5.4%, chỉ đọc 14.6%, cuối là đọc 17.3%; không cài (224) → hỏi 17.0%,
+  chỉ đọc 4.9%, cuối là đọc 6.2%. Có app public-only nhưng lịch sử chưa dùng (226): cuối là đọc 23.5%, hỏi 8.0%.
+  Lịch sử đã dùng tool public-only (184): 1.8 lời gọi/mẫu, hỏi 2.2%.
+- Tiếp: câu 2, tín hiệu thất bại trên từng tool public-only.
