@@ -161,3 +161,21 @@ Brief: `lifemate-orca-ctx-brief.md` (root, 15/11). Chỉ CPU, chỉ viết docs.
 - Chọn đúng tuyệt đối giữa W và v3 theo từng mẫu cho 64.41 (v3 51.73), nhưng không có luật chọn và hai model merge vượt
   giới hạn tham số: không đề xuất.
 - `docs/RESEARCH_NEXT.md`: 6 việc xếp theo trần, kèm danh sách không làm. Mọi mức tăng: NOT MEASURED.
+
+# Việc tìm lại danh bạ (brief `lifemate-orca-contact-brief.md`, root quyết định 15/11 19:05)
+
+## C-1 (15/11): `LIFEMATE_CONTACT_RETRY=1` xong, mặc định tắt
+
+- Đã làm: trong `src/agent/runner.py`, khi `contacts.search` trả `ok` với danh sách rỗng và truy vấn mở đầu bằng một từ xưng hô
+  rồi tới tên, runner tự xếp một lệnh `contacts.search` với phần tên còn lại. Lệnh này đi qua mọi guard và được gọi vào ToolEnv
+  như lệnh của planner (có trong `tool_calls`); planner thấy cả hai lần tìm ở lượt kế. Chỉ làm bản trung thực; không có bản
+  "tìm lại bằng tên đã lưu để khớp cách chấm".
+- Danh sách từ xưng hô lấy từ TRAIN: tên lưu kèm từ xưng hô (sếp 33, bác 27, cô 23, anh 15, thằng 4, thầy 3, bà 3, vợ 3, chị 2,
+  ông 2, mẹ 1, chú 1, bé 1) và câu nói có từ xưng hô mà tên lưu không có (anh 6, chị 3, thầy 1, ông 1).
+- File: `src/agent/runner.py`, `tests/test_orca_contact_retry.py`, `scripts/orca_v4_measure.py` (thêm lệnh `contact`).
+- Đo trên 1236 ID train bằng `contacts.search` thật (lệnh đọc, một ToolEnv mỗi mẫu):
+  `python -B -m scripts.orca_v4_measure contact --data-root <kit>` → luật kích hoạt trên 0/161 truy vấn gold; với 11 câu nói
+  "<xưng hô> tên" mà tên lưu không có từ xưng hô, truy vấn kèm từ xưng hô tìm không ra ở 11/11 và lần tìm lại trả đúng liên hệ
+  gold ở 11/11 (cả dạng viết hoa lẫn viết thường). Điểm: NOT MEASURED.
+- Test: `python -B -m pytest -q -p no:cacheprovider` → 360 passed, 1 skipped; `python -B -m src.inference mock --samples 40` → 40/40.
+- Tiếp: ghi mục "Đã làm" trong `docs/RESEARCH_NEXT.md`.

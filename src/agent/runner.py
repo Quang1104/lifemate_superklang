@@ -137,6 +137,21 @@ def moved_event_end(arguments: dict[str, Any], results: list[dict[str, Any]]) ->
         return arguments
 
 
+# Kinship and role words that open a spoken name. In TRAIN contacts are stored with one (sếp 33, bác 27, cô 23,
+# anh 15, thằng 4, thầy 3, bà 3, vợ 3, chị 2, ông 2, mẹ 1, chú 1, bé 1) or without it although the user says it
+# (anh 6, chị 3, thầy 1, ông 1); only the search result tells which.
+_NAME_TITLES = frozenset("anh chị thầy ông sếp bác cô thằng bà vợ mẹ chú bé".split())
+
+
+def name_only_search(arguments: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any] | None:
+    """contacts.search arguments without the leading title, when the search as asked found nobody."""
+    query = arguments.get("query")
+    if payload.get("ok") is not True or payload.get("contacts") != [] or not isinstance(query, str):
+        return None
+    title, _, name = query.strip().partition(" ")
+    return {**arguments, "query": name.strip()} if title.casefold() in _NAME_TITLES and name.strip() else None
+
+
 def run_sample(sample: Sample, registry: ToolRegistry, planner: Planner,
                environment_factory: Callable[[Sample], Environment], *,
                limits: Limits = Limits()) -> RunResult:
@@ -164,6 +179,7 @@ def run_sample(sample: Sample, registry: ToolRegistry, planner: Planner,
     rejections = 0
     step = 0
     last_planner_output: str | None = None
+    follow_up: list[str] = []  # an action the runner itself queues; it passes every guard like a planner action
 
     def result(status: str, reply: str | None = None, *, safe: bool = True) -> RunResult:
         # Guard reasons already exclude submitted values; never include arguments.
@@ -179,7 +195,8 @@ def run_sample(sample: Sample, registry: ToolRegistry, planner: Planner,
         request = PlannerInput(deepcopy(sample), deepcopy(tools), tuple(deepcopy(observations)),
                                planner_deadline - 0.1)
         try:
-            output = _bounded_call(lambda: planner(request), remaining(limits.planner_seconds))
+            output = (follow_up.pop() if follow_up
+                      else _bounded_call(lambda: planner(request), remaining(limits.planner_seconds)))
             # TRAIN native diagnostics expose the raw chat text before call normalization.
             diagnostic_output = getattr(planner, "last_planner_output", None)
             last_planner_output = (diagnostic_output[:400] if isinstance(diagnostic_output, str)
@@ -256,6 +273,11 @@ def run_sample(sample: Sample, registry: ToolRegistry, planner: Planner,
             return result("invalid_tool_result", safe=False)
         observations.append(Observation("untrusted_tool_result", action.name, payload,
                                         action.arguments))
+        if os.environ.get("LIFEMATE_CONTACT_RETRY") == "1" and action.name == "contacts.search":
+            again = name_only_search(action.arguments, payload)
+            if again is not None:  # "anh Tuấn" found nobody: look for "Tuấn" before the planner gives up
+                follow_up.append(encode_json({"action": "call", "tool": action.name, "arguments": again},
+                                             max_bytes=limits.planner_output_bytes))
         if payload["ok"] and payload.get("done") is not False:
             if spec.writes:
                 recent_reads.clear()

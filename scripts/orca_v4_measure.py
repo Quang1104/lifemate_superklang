@@ -6,6 +6,7 @@ split manifests; never a ToolEnv. The 309 validation IDs are left out of every T
     python -B -m scripts.orca_v4_measure dup --data-root <kit>
     python -B -m scripts.orca_v4_measure prompt --data-root <kit>
     python -B -m scripts.orca_v4_measure small --data-root <kit> [--transcripts outputs/asr_train.jsonl]
+    python -B -m scripts.orca_v4_measure contact --data-root <kit>   (read-only contacts.search on TRAIN ToolEnvs)
 """
 
 import argparse
@@ -17,7 +18,7 @@ from pathlib import Path
 from statistics import median
 from time import monotonic
 
-from src.agent.runner import _record_lists, same_name_ask
+from src.agent.runner import _NAME_TITLES, _record_lists, name_only_search, same_name_ask
 from src.tooling.lifemate_catalog import build_registry
 
 
@@ -143,9 +144,50 @@ def small(data_root: Path, transcripts: Path | None) -> None:
         print(f"{key}: {value}")
 
 
+def contact(data_root: Path) -> None:
+    """LIFEMATE_CONTACT_RETRY on TRAIN: gold searches it would touch, and spoken "<title> name" queries it recovers.
+
+    Only contacts.search (a read) is sent, to one TRAIN ToolEnv per sample, through the official API.
+    """
+    import re
+
+    from src.inference.official import OfficialKit
+    from src.inference.pipeline import _sample_from_row
+
+    kit, total = OfficialKit(data_root, "train"), Counter()
+    wanted = {row["id"]: row for row in _train(data_root)
+              if any(call["name"] == "contacts.search" and "query" in call["arguments"]
+                     for call in row["label"]["tool_calls"])}
+    for row in kit.rows(set(wanted)):
+        gold = wanted[row["id"]]
+        environment = kit.open_environment(_sample_from_row(kit, row, None, monotonic() + 60, control_noop=False))
+        for call, result in zip(gold["label"]["tool_calls"], gold["label"]["tool_results"]):
+            if call["name"] != "contacts.search" or "query" not in call["arguments"]:
+                continue
+            query = call["arguments"]["query"]
+            total["gold contacts.search queries"] += 1
+            total["  rule fires on the gold query"] += name_only_search(
+                call["arguments"], environment.call("contacts.search", {"query": query})) is not None
+            spoken = re.search(r"(\w+) " + re.escape(query.lower()), gold["audio_text"].lower())
+            if spoken is None or spoken.group(1) not in _NAME_TITLES:
+                continue
+            total['requests that say "<title> name" for a contact stored without the title'] += 1
+            ids = {item["id"] for item in result.get("contacts", [])}
+            for form in (f"{spoken.group(1).capitalize()} {query}", f"{spoken.group(1)} {query}"):
+                first = environment.call("contacts.search", {"query": form})
+                again = name_only_search({"query": form}, first)
+                kind = "capitalised" if form[0].isupper() else "lower-case"
+                total[f"  {kind} title: search finds nobody"] += first.get("contacts") == []
+                if again is not None:
+                    found = {item["id"] for item in environment.call("contacts.search", again).get("contacts", [])}
+                    total[f"  {kind} title: retry returns the gold contact"] += bool(ids) and ids <= found
+    for key, value in total.items():
+        print(f"{key}: {value}")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("what", choices=("dup", "prompt", "small"))
+    parser.add_argument("what", choices=("dup", "prompt", "small", "contact"))
     parser.add_argument("--data-root", type=Path, required=True)
     parser.add_argument("--transcripts", type=Path, default=Path("outputs/asr_train.jsonl"))
     options = parser.parse_args()
@@ -155,5 +197,7 @@ if __name__ == "__main__":
         dup(options.data_root)
     elif options.what == "prompt":
         prompt(options.data_root)
+    elif options.what == "contact":
+        contact(options.data_root)
     else:
         small(options.data_root, options.transcripts)
