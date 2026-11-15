@@ -37,3 +37,12 @@ Brief: `lifemate-orca-ctx-brief.md` (root, 15/11). Chỉ CPU, chỉ viết docs.
 - Nhóm nhỏ: `calendar.update_event` gold luôn có `end` (27/27); `create_event` có `end` 23/34; `read_chat` không bao giờ
   có `limit` (0/11); email đọc đánh vần ("a còng") 7/1236 câu; "N phút/tiếng nữa" 3/329 câu có đối số ngày giờ.
 - Tiếp: viết `docs/CONTEXT_PLAN.md`.
+
+## Bước 4 (15/11 13:15): viết xong `docs/CONTEXT_PLAN.md`
+
+- Đã làm: bảng mất điểm lượt oracle, so cặp v3 với base, cách sửa cho ba nhóm đầu (chữ prompt, chỗ đặt trong code,
+  có cần train lại không, trần trên), kế hoạch xếp hạng tới 12:00 ngày 16/11.
+- Số chính: ba nhóm đầu mất 13.13 + 12.50 + 7.50 = 33.13 điểm trên lượt oracle. Guard trùng tên không cần train (trần 7.5);
+  dòng app không cài và ví dụ kèm bằng chứng cần một lượt QLoRA (trần 5.0 và 13.13).
+- Chưa đo: điểm của mọi đề xuất, v3 với transcript gold, token và độ trễ thêm.
+- Tiếp (nếu root duyệt): code guard trùng tên và các thay đổi prompt sau cờ; lượt GPU đầu tiên nên là v3 với `--train-transcripts`.
