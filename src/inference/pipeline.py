@@ -3,11 +3,13 @@
 from collections.abc import Callable, Iterable, Iterator
 from dataclasses import replace
 import json
+import os
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from time import monotonic
 from typing import Any
 
+from ..agent.asr_fix import wrapped
 from ..agent.planner import Planner
 from ..agent.runner import CallbackError, CallTimeout, Limits, RunResult, _bounded_call, run_sample
 from ..tooling.json_data import encode_json
@@ -20,11 +22,20 @@ Transcribe = Callable[[Path], str]
 
 
 def _transcribe(kit: OfficialKit, sample_id: str, item: dict[str, Any], transcribe: Transcribe,
-                deadline: float, *, history: bool) -> str:
+                deadline: float, *, history: bool, context: dict | None = None) -> str:
     audio_path = kit.audio_path(sample_id, item["audio"], history=history)
-    text = _bounded_call(lambda: transcribe(audio_path), deadline - monotonic())
+    deadline_transcriber = getattr(transcribe, "transcribe", None)
+    contextual = (getattr(transcribe, "transcribe_with_context", None)
+                  if os.environ.get("LIFEMATE_ASR_PROMPT") == "1" else None)
+    if callable(contextual):
+        callback = lambda: contextual(audio_path, deadline=deadline - 0.1, context=context)
+    elif callable(deadline_transcriber):
+        callback = lambda: deadline_transcriber(audio_path, deadline=deadline - 0.1)
+    else:
+        callback = lambda: transcribe(audio_path)
+    text = _bounded_call(callback, deadline - monotonic())
     if not isinstance(text, str) or not text.strip():
-        raise KitError("ASR returned no usable transcript")
+        raise CallbackError("ASR returned no usable transcript")
     return text.strip()
 
 
@@ -34,12 +45,23 @@ def _sample_from_row(kit: OfficialKit, row: dict[str, Any], transcribe: Transcri
     apps, tools = installed_permissions(row["context"])
     context = {key: row["context"][key] for key in ("current_time", "timezone", "location", "user_profile")
                if key in row["context"]}
+    if os.environ.get("LIFEMATE_CONTEXT_V4") == "1":
+        # Which apps of this split's catalog the device has and lacks; build_sft.py passes through here too.
+        labels = {app: f"{name} ({app})" for app, name in getattr(kit, "app_names", {}).items() if app != "sys"}
+        context["apps"] = {"installed": [label for app, label in labels.items() if app in apps],
+                           "missing": [label for app, label in labels.items() if app not in apps]}
     if control_noop:
         return Sample(sample_id, "Held-out TRAIN no-op control", apps, allowed_tools=tools)
+    transcribe = wrapped(transcribe, row)  # the same object unless LIFEMATE_ASR_FIX=1
     if transcribe is None:
         user_text = row["audio_text"]
     else:
-        user_text = _transcribe(kit, sample_id, row, transcribe, deadline, history=False)
+        prompt_context = None
+        if os.environ.get("LIFEMATE_ASR_PROMPT") == "1":
+            prompt_context = {"context": row["context"], "entities": [
+                turn.get("tool_results", []) for turn in row["history"] if turn.get("role") == "assistant"
+            ]}
+        user_text = _transcribe(kit, sample_id, row, transcribe, deadline, history=False, context=prompt_context)
 
     history = []
     prior = []
@@ -47,6 +69,8 @@ def _sample_from_row(kit: OfficialKit, row: dict[str, Any], transcribe: Transcri
         if item.get("role") == "user":
             text = item["audio_text"] if transcribe is None else _transcribe(
                 kit, sample_id, item, transcribe, deadline, history=True,
+                context=({"context": row["context"], "entities": [p.payload for p in prior]}
+                         if os.environ.get("LIFEMATE_ASR_PROMPT") == "1" else None),
             )
             history.append(encode_json({"role": "user", "text": text}, max_bytes=32_000))
         elif item.get("role") == "assistant":
@@ -65,42 +89,88 @@ def _sample_from_row(kit: OfficialKit, row: dict[str, Any], transcribe: Transcri
 def predict_records(kit: OfficialKit, planner: Planner, transcribe: Transcribe | None, *,
                     sample_ids: set[str] | None = None, control_noop: bool = False,
                     limits: Limits = Limits(), on_result: Callable[[RunResult, int], None] | None = None,
+                    planner_factory: Callable[[], Planner] | None = None,
+                    export_reserve_seconds: float = 3.0,
+                    on_sample: Callable[[str, str, int, RunResult | None, bool], None] | None = None,
+                    continue_train_failures: bool = False,
+                    finished: dict[str, OfficialRecord] | None = None,
                     ) -> Iterator[OfficialRecord]:
-    if limits.sample_seconds > 30:
+    if limits.sample_seconds > 30 and kit.split != "train":  # TRAIN may scale limits to measure accuracy only.
         raise KitError("Official inference must fit the 30-second per-sample limit")
+    if not 0 <= export_reserve_seconds < limits.sample_seconds:
+        raise KitError("Export reserve must fit the sample time budget")
+    if continue_train_failures and kit.split != "train":
+        raise KitError("Failure-tolerant scoring is only available for TRAIN")
     if kit.split != "train" and (transcribe is None or control_noop or sample_ids is not None):
         raise KitError("A test run requires ASR and the complete test split")
     for row in kit.rows(sample_ids):
+        if finished and row["id"] in finished:  # exported by an earlier, interrupted run
+            yield finished[row["id"]]
+            continue
+        for model in (planner, transcribe):
+            reset_metrics = getattr(model, "reset_metrics", None)
+            if callable(reset_metrics):
+                reset_metrics()
         started = monotonic()
         deadline = started + limits.sample_seconds
+        execution_deadline = deadline - export_reserve_seconds
         environment: OfficialEnvironment | None = None
+        result = None
 
         def open_environment(sample: Sample) -> OfficialEnvironment:
             nonlocal environment
-            environment = kit.open_environment(sample)
+            if environment is None:
+                environment = kit.open_environment(sample)
             return environment
 
         try:
-            sample = _sample_from_row(kit, row, transcribe, deadline, control_noop=control_noop)
-            remaining = deadline - monotonic()
-            if remaining <= 0:
-                raise CallTimeout("Preprocessing deadline elapsed")
-            result = run_sample(sample, kit.registry, planner, open_environment,
-                                limits=replace(limits, sample_seconds=remaining))
-            if environment is None or not result.session_safe_to_export or result.status.endswith("_error"):
+            try:
+                sample = _sample_from_row(kit, row, transcribe, execution_deadline, control_noop=control_noop)
+                remaining = execution_deadline - monotonic()
+                if remaining <= 0:
+                    raise CallTimeout("Preprocessing deadline elapsed")
+            except (CallTimeout, CallbackError) as exc:
+                status = ("preprocessing_timeout" if isinstance(exc, CallTimeout)
+                          or isinstance(exc.__cause__, TimeoutError) else "preprocessing_error")
+                # No app call was dispatched. Export the genuine untouched environment.
+                apps, tools = installed_permissions(row["context"])
+                sample = Sample(row["id"], "Audio unavailable", apps, allowed_tools=tools)
+                _bounded_call(lambda: open_environment(sample), deadline - monotonic())
+                result = RunResult(status, None, 0, 0, 0, True)
+            else:
+                active_planner = planner_factory() if planner_factory is not None else planner
+                result = run_sample(sample, kit.registry, active_planner, open_environment,
+                                    limits=replace(limits, sample_seconds=remaining))
+            if environment is None or not result.session_safe_to_export:
                 raise KitError(f"Sample {row['id']} failed safely ({result.status})")
             calls, state_hash = _bounded_call(environment.read_output, deadline - monotonic())
-        except (CallTimeout, CallbackError) as exc:
-            raise KitError(f"Sample {row['id']} exceeded its deadline or an inference stage failed") from exc
+            if monotonic() > deadline:
+                raise CallTimeout("Sample exceeded its deadline")
+        except (CallTimeout, CallbackError, KitError, OSError, ValueError, KeyError) as exc:
+            if not continue_train_failures:
+                raise KitError(f"Sample {row['id']} could not export official output: {exc}") from exc
+            timed_out = isinstance(exc, CallTimeout) or (
+                isinstance(exc, CallbackError) and isinstance(exc.__cause__, TimeoutError)
+            )
+            status = result.status if result is not None else (
+                "preprocessing_timeout" if timed_out else "preprocessing_error")
+            if timed_out and not status.endswith("_timeout"):
+                status = "export_timeout"
+            if not timed_out and not status.endswith(("_timeout", "_error")):
+                status = "export_error"
+            if on_sample is not None:
+                on_sample(row["id"], status, int((monotonic() - started) * 1_000), result, False)
+            continue
         elapsed_ms = int((monotonic() - started) * 1_000)
-        if monotonic() > deadline:
-            raise KitError(f"Sample {row['id']} exceeded its deadline")
         if on_result is not None:
             on_result(result, elapsed_ms)
+        if on_sample is not None:
+            on_sample(row["id"], result.status, elapsed_ms, result, True)
         yield OfficialRecord(row["id"], calls, state_hash, elapsed_ms if kit.split == "private_test" else None)
 
 
-def write_official_records(path: str | Path, records: Iterable[OfficialRecord]) -> int:
+def write_official_records(path: str | Path, records: Iterable[OfficialRecord], *,
+                           allow_empty: bool = False) -> int:
     output = safe_path(path)
     output.parent.mkdir(parents=True, exist_ok=True)
     temporary: Path | None = None
@@ -114,12 +184,53 @@ def write_official_records(path: str | Path, records: Iterable[OfficialRecord]) 
                 if not isinstance(record, OfficialRecord) or record.sample_id in seen:
                     raise KitError("Submission expects one official record per sample ID")
                 seen.add(record.sample_id)
-                sink.write(json.dumps(record.as_dict(), ensure_ascii=False, allow_nan=False) + "\n")
+                sink.write(_record_line(record))
                 count += 1
-        if not count:
+        if not count and not allow_empty:
             raise KitError("Submission is empty")
         temporary.replace(output)
     finally:
         if temporary is not None and temporary.exists():
             temporary.unlink()
     return count
+
+
+def _record_line(record: OfficialRecord) -> str:
+    return json.dumps(record.as_dict(), ensure_ascii=False, allow_nan=False) + "\n"
+
+
+def read_resume_log(path: str | Path, split_ids: set[str]) -> dict[str, OfficialRecord]:
+    """Load records an interrupted run already exported; cut a partially written last line."""
+    log = safe_path(path)
+    if not log.exists():
+        return {}
+    data = log.read_bytes()
+    complete = data.rfind(b"\n") + 1
+    if complete < len(data):
+        with log.open("r+b") as sink:
+            sink.truncate(complete)
+    finished: dict[str, OfficialRecord] = {}
+    for line in data[:complete].decode("utf-8").splitlines():
+        row = json.loads(line)
+        if (not isinstance(row, dict) or set(row) - {"time"} != {"id", "tool_calls", "state_hash"}
+                or not isinstance(row["tool_calls"], list) or not isinstance(row["state_hash"], str)
+                or not isinstance(row.get("time", 0), int)):
+            raise KitError("Resume log holds a malformed record")
+        if row["id"] not in split_ids or row["id"] in finished:
+            raise KitError(f"Resume log holds an unexpected or repeated ID: {row['id']}")
+        finished[row["id"]] = OfficialRecord(row["id"], row["tool_calls"], row["state_hash"], row.get("time"))
+    return finished
+
+
+def append_resume_log(path: str | Path, records: Iterable[OfficialRecord],
+                      finished: dict[str, OfficialRecord]) -> Iterator[OfficialRecord]:
+    """Durably log each newly exported record before passing it on."""
+    log = safe_path(path)
+    log.parent.mkdir(parents=True, exist_ok=True)
+    with log.open("a", encoding="utf-8", newline="\n") as sink:
+        for record in records:
+            if record.sample_id not in finished:
+                sink.write(_record_line(record))
+                sink.flush()
+                os.fsync(sink.fileno())
+            yield record

@@ -31,6 +31,7 @@ class PlannerInput:
     sample: Sample
     tools: list[dict[str, Any]]
     observations: tuple[Observation, ...]
+    deadline: float | None = None
 
 
 class Planner(Protocol):

@@ -19,7 +19,7 @@ Sources: [official portal](https://challenge.zalo.ai/portal/lifemate), its publi
 ## Unresolved official-source conflicts — release blockers
 
 - Rule tab: NVIDIA A30, Xeon Gold 6442Y 16 cores, 64GB RAM. Docker PDF p4: RTX5090 32GB, Xeon Gold6459C 16 cores, 64GB RAM. Do not claim either is conclusively the final machine. Benchmark on the confirmed target before release.
-- Docker PDF p4 allows CUDA <=13.2 (explicitly 12.x); p7 says CUDA13.2 mandatory. Scaffold uses13.2, but needs organizer clarification and driver compatibility testing on the actual machine.
+- Docker PDF p4 allows CUDA <=13.2 (explicitly 12.x); p7 says CUDA13.2 mandatory. The current Dockerfile selects CUDA 13.2, pending organizer clarification and driver compatibility testing on the actual machine.
 - Submission guidance says private-test release 09:00 Nov20; public homepage says11:00. This does not change Nov16 solution deadline.
 - Native model context versus configured inference cap interpretation is not explicit. Cap runtime to16384 and document native capacity; seek confirmation if necessary.
 

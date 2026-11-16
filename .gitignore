@@ -1,32 +1,14 @@
-# Contest datasets
 /train/
 /public_test/
-/private_test/
-
-# Model weights
+/train+public_test/
+/data_kit/
 /models/
 /checkpoints/
 /outputs/
-*.safetensors
-*.gguf
-*.pt
-*.pth
-
-# Python
-.venv/
+/.venv/
+/.cache/
 __pycache__/
+*.py[cod]
 .pytest_cache/
-*.pyc
-
-# Credentials
+*.egg-info/
 .env
-.env.*
-!.env.example
-
-# OS
-.DS_Store
-__MACOSX/
-
-# Kit copies / local extractions
-/train+public_test/
-/data_kit/

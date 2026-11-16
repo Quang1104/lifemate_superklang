@@ -2,21 +2,29 @@
 
 import argparse
 from collections import Counter
+from dataclasses import replace
 import json
+import math
 from pathlib import Path
+from statistics import mean
 import sys
 
+from ..agent.runner import Limits
+from .api import ModelHandle, load_models
 from .mock import run_mock
 from .official import KitError, OfficialKit
 from .paths import safe_path
-from .pipeline import predict_records, write_official_records
+from .pipeline import append_resume_log, predict_records, read_resume_log, write_official_records
 
 
 def _read_manifest(path: str | None) -> set[str] | None:
     if path is None:
         return None
     with safe_path(path).open(encoding="utf-8") as source:
-        ids = json.load(source)["validation_ids"]
+        manifest = json.load(source)
+    if manifest.get("source_split") != "train":
+        raise KitError("Expected a TRAIN manifest")
+    ids = manifest["validation_ids"]
     if not isinstance(ids, list) or not ids or not all(isinstance(item, str) for item in ids):
         raise KitError("Expected a nonempty validation_ids list in the TRAIN manifest")
     if len(set(ids)) != len(ids):
@@ -37,16 +45,71 @@ def _parser() -> argparse.ArgumentParser:
     official.add_argument("--model-dir", type=Path)
     official.add_argument("--asr-dir", type=Path)
     official.add_argument("--device", default="cpu")
+    official.add_argument("--planner-mode", choices=("direct", "compiled", "native"), default="direct")
     official.add_argument("--train-manifest")
     official.add_argument("--train-transcripts", action="store_true")
     official.add_argument("--control-noop", action="store_true")
+    official.add_argument("--time-scale", type=float, default=1.0,
+                          help="TRAIN only: multiply every time limit to measure accuracy on slower GPUs")
+    official.add_argument("--train-report", type=Path,
+                          help="Record TRAIN timing and failure status separately from official logs")
+    official.add_argument("--resume-log", help="Append each finished record here; a rerun skips logged IDs")
     commands.add_parser("oracle", help="Explain why inference never uses TRAIN labels")
     return parser
 
 
-def _run_official(args: argparse.Namespace) -> dict:
+def _sample_model_timings(planner, transcribe) -> dict:
+    planner_snapshot = getattr(planner, "timing_snapshot", None)
+    asr_snapshot = getattr(transcribe, "timing_snapshot", None)
+    calls = planner_snapshot() if callable(planner_snapshot) else []
+    audio = asr_snapshot() if callable(asr_snapshot) else []
+    fields = ("prompt_tokens", "generated_tokens", "reused_prefix_tokens",
+              "grammar_compile_ms", "generate_ms", "grammar_status")
+    probed = [row["call_prob"] for row in calls if "call_prob" in row]  # only with LIFEMATE_ABSTAIN_PROBE=1
+    abstain = {"abstain_call_prob": probed[0],
+               "abstain_forced": any(row.get("forced_prefix") for row in calls)} if probed else {}
+    return {**abstain, "asr_ms": sum(row["asr_ms"] for row in audio), "planner_calls": len(calls),
+            "asr_timing_complete": all(row.get("timing_complete", True) for row in audio),
+            "timing_complete": [row.get("timing_complete", True) for row in calls],
+            **{field: [row[field] for row in calls] for field in fields}}
+
+
+def _model_timing_summary(samples: list[dict]) -> dict:
+    generate = sorted(value for sample in samples for value in sample["generate_ms"])
+    prompts = [value for sample in samples for value in sample["prompt_tokens"]]
+    return {"mean_planner_generate_ms": mean(generate) if generate else 0.0,
+            "p95_planner_generate_ms": generate[math.ceil(0.95 * len(generate)) - 1] if generate else 0.0,
+            "mean_prompt_tokens": mean(prompts) if prompts else 0.0,
+            "prompts_above_12000": sum(value > 12_000 for value in prompts),
+            "total_grammar_compile_ms": sum(value for sample in samples
+                                            for value in sample["grammar_compile_ms"])}
+
+
+class _TrainNativeDiagnostics:
+    """Observe one native session without changing its calls, prompts, or outputs."""
+
+    def __init__(self, planner) -> None:
+        self._planner = planner
+        self.last_planner_output: str | None = None
+        chat = planner._chat
+
+        def observe(*args, **kwargs):
+            text = chat(*args, **kwargs)
+            self.last_planner_output = text[:400] if isinstance(text, str) else None
+            return text
+
+        planner._chat = observe
+
+    def __call__(self, request):
+        return self._planner(request)
+
+
+def _run_official(args: argparse.Namespace, *, models: ModelHandle | None = None) -> dict:
     train = args.split == "train"
-    if not train and (args.control_noop or args.train_manifest or args.train_transcripts):
+    if not math.isfinite(args.time_scale) or args.time_scale < 1:
+        raise KitError("The time scale must be a finite number of at least 1")
+    if not train and (args.control_noop or args.train_manifest or args.train_transcripts or args.train_report
+                      or args.time_scale != 1):
         raise KitError("TRAIN controls and transcripts require the TRAIN split")
     manifest = _read_manifest(args.train_manifest)
     if args.control_noop and (not manifest or args.model_dir or args.asr_dir or args.train_transcripts):
@@ -55,33 +118,92 @@ def _run_official(args: argparse.Namespace) -> dict:
         raise KitError("Supply local planner and ASR weights, or use TRAIN transcripts for a TRAIN run")
     if args.asr_dir and args.train_transcripts:
         raise KitError("Choose either ASR or released TRAIN transcripts")
+    if args.control_noop and args.planner_mode != "direct":
+        raise KitError("The no-op control cannot use the compiled planner")
+    output = safe_path(args.output)
+    report_path = safe_path(args.train_report) if args.train_report else None
+    if report_path == output:
+        raise KitError("TRAIN report and official output require separate files")
+    resume_log = getattr(args, "resume_log", None)  # api.predict builds its own Namespace without it
+    resume_path = safe_path(resume_log) if resume_log else None
+    if resume_path is not None and resume_path in (output, report_path):
+        raise KitError("The resume log requires its own file")
     kit = OfficialKit(args.data_root, args.split)
-    if args.control_noop:
-        def planner(_):
-            return '{"action":"finish","reply":""}'
+    finished = (read_resume_log(resume_path, {row["id"] for row in kit.rows(manifest)})
+                if resume_path is not None else None)
+    defaults = Limits()
+    limits = replace(defaults, sample_seconds=defaults.sample_seconds * args.time_scale,
+                     planner_seconds=defaults.planner_seconds * args.time_scale,
+                     tool_seconds=defaults.tool_seconds * args.time_scale)
+    if models is None:
+        models = load_models(args.model_dir, args.asr_dir, device=args.device,
+                             planner_mode=args.planner_mode, control_noop=args.control_noop,
+                             limits=limits)
+    elif (models.model_dir != args.model_dir or models.asr_dir != args.asr_dir
+          or models.device != args.device or models.planner_mode != args.planner_mode
+          or models.control_noop != args.control_noop or models.limits != limits):
+        raise KitError("Loaded models do not match the inference configuration")
+    planner = models.planner
+    transcribe = models.transcribe
+    planner_factory = models.planner_factory
+    if report_path is not None and planner_factory is not None:
+        from ..agent.native_planner import NativePlanner
 
-        transcribe = None
-    else:
-        from ..agent.local_model import LocalPlanner, LocalWhisper, initialize_runtime
+        base_factory = planner_factory
 
-        initialize_runtime()
-        planner = LocalPlanner(args.model_dir, device=args.device)
-        transcribe = LocalWhisper(args.asr_dir, device=args.device) if args.asr_dir else None
-        if planner.parameter_count + (transcribe.parameter_count if transcribe else 0) >= 6_000_000_000:
-            raise KitError("Combined models must contain fewer than six billion parameters")
+        def planner_factory():
+            active = base_factory()
+            return _TrainNativeDiagnostics(active) if isinstance(active, NativePlanner) else active
+    parameter_counts = models.parameter_counts
+    gpu = models.gpu
+    load_ms = models.load_ms
     statuses: Counter[str] = Counter()
     timings = []
+    details = []
 
-    def track(result, elapsed_ms):
-        statuses[result.status] += 1
+    def track(sample_id, status, elapsed_ms, result, exported):
+        statuses[status] += 1
         timings.append(elapsed_ms)
+        if report_path is not None:
+            details.append({"id": sample_id, "status": status, "time": elapsed_ms, "exported": exported,
+                            "steps": result.steps if result else 0,
+                            "dispatched_calls": result.dispatched_calls if result else 0,
+                            "rejections": result.rejections if result else 0,
+                            "guard_rejections": list(result.guard_rejections) if result else [],
+                            **({"last_planner_output": result.last_planner_output if result else None}
+                               if result is None or result.dispatched_calls == 0 else {}),
+                            **_sample_model_timings(planner, transcribe)})
 
-    count = write_official_records(args.output, predict_records(
-        kit, planner, transcribe, sample_ids=manifest, control_noop=args.control_noop, on_result=track,
-    ))
-    return {"mode": "train_noop_control" if args.control_noop else "official_local_model",
-            "split": args.split, "records": count, "statuses": dict(statuses),
-            "max_sample_time_ms": max(timings), "competition_score": "NOT MEASURED"}
+    records = predict_records(
+        kit, planner, transcribe, sample_ids=manifest, control_noop=args.control_noop,
+        limits=limits, planner_factory=planner_factory, on_sample=track,
+        continue_train_failures=report_path is not None, finished=finished,
+    )
+    if resume_path is not None:
+        records = append_resume_log(resume_path, records, finished)
+    count = write_official_records(output, records, allow_empty=report_path is not None)
+    timing = sorted(timings)
+    summary = {"mode": "train_noop_control" if args.control_noop else "official_local_model",
+               "planner_mode": args.planner_mode, "split": args.split, "records": count,
+               "attempted": len(timing), "statuses": dict(statuses), "parameters": parameter_counts,
+               "planner_artifact": str(safe_path(args.model_dir)) if args.model_dir else None,
+               "asr_artifact": str(safe_path(args.asr_dir)) if args.asr_dir else None,
+               "device": args.device, "time_scale": args.time_scale,
+               "grammar": dict(planner.grammar_stats) if hasattr(planner, "grammar_stats") else None, "transcript_source": (
+                   "control" if args.control_noop else "train_oracle" if args.train_transcripts else "asr"),
+               "model_load_ms": load_ms,  # no timings when a resume log already held every sample
+               "mean_sample_time_ms": mean(timing) if timing else None,
+               "p95_sample_time_ms": timing[math.ceil(0.95 * len(timing)) - 1] if timing else None,
+               "max_sample_time_ms": timing[-1] if timing else None, "competition_score": "NOT MEASURED"}
+    if gpu is not None:
+        summary["gpu_name"] = gpu.get_device_name(args.device)
+        summary["peak_gpu_memory_mib"] = round(gpu.max_memory_allocated(args.device) / 2**20, 1)
+    if report_path is not None:
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(json.dumps({**summary, **_model_timing_summary(details),
+                                           "samples": details}, indent=2) + "\n",
+                               encoding="utf-8")
+    return summary
 
 
 def main(argv: list[str] | None = None) -> int:

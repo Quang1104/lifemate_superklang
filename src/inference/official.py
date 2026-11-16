@@ -107,7 +107,10 @@ class OfficialKit:
         self._input = safe_path(self.directory / f"{split}.jsonl")
         catalog_path = safe_path(self.directory / f"{split}_tools_catalog.json")
         with catalog_path.open(encoding="utf-8") as source:
-            self.registry = build_registry(json.load(source))
+            catalog = json.load(source)
+        self.registry = build_registry(catalog)
+        # Display names of every app of this split, in catalog order (prompt text under LIFEMATE_CONTEXT_V4).
+        self.app_names = {app["id"]: app.get("name_vi") or app["id"] for app in catalog.get("apps", ())}
         package = safe_path(self.directory / "zaic_tools" / "__init__.py")
         self._release = _load_release(package, split)
 

@@ -1,5 +1,7 @@
 # Baseline architecture and decision
 
+The Colab A/B workflow uses Qwen3.5-4B and PhoWhisper-medium in both arms, with the pinned Qwen3-4B-Instruct-2507 fallback. The direct arm proposes one call at a time. The compiled arm validates one full plan, resolves typed arguments from visible evidence and uses the same executor. See [the Colab guide](LIFEMATE_COLAB.md) for the run order and release gates. The earlier baseline notes below record the design before this implementation.
+
 Decision: implement the feedback loop of candidate C, but retain all installed tools initially. Retrieval pruning is experimental until TRAIN held-out gold-tool recall demonstrates it preserves dependencies. This avoids adding a new model before a measurable planner baseline exists.
 
 ```mermaid
