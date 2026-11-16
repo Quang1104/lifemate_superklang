@@ -62,3 +62,11 @@ Sau khi build, đối chiếu cờ trong image với manifest: `docker image ins
 Chưa build image nào với `-Flags`: kích thước, thời gian và kết quả chạy trong container là NOT MEASURED. Trên máy này
 PowerShell chặn chạy file script (execution policy), nên `release.ps1` mới được phân tích cú pháp (0 lỗi) và các dòng xử lý
 cờ được chạy trực tiếp trong PowerShell: đầu vào hợp lệ cho đúng các `--build-arg`, rỗng cho 0 cờ, tên lạ trả mã lỗi 1.
+
+## Bản cuối 16/11 (đội Locked In)
+
+Public v8b = 46 (cao nhất). Lệnh build theo tên BTC (`docs/sources/docker_guide.txt` mục 7–8; tag Docker phải viết thường, không dấu cách):
+
+`powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\docker\release.ps1 -AdapterDir C:\lifemate_release\qlora_v8b -Flags "LIFEMATE_CONTEXT_V4=1,LIFEMATE_SMALL_FIXES=1,LIFEMATE_TIME_HINTS_V8=1" -ImageTag "zac2026-lockedin:v1" -OutputArchive "C:\lifemate_release\zac2026_LockedIn.tar.gz"`
+
+`<AdapterDir>` = `lifemate_results/qlora_v8b`, `<AdapterDir>\asr` = `lifemate_results/asr_ft`. Sau build: MD5 trong `.manifest.json`, upload Google Drive chế độ "Anyone with the link", nộp link + MD5. Build/chạy thử: NOT MEASURED.
