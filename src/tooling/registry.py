@@ -84,6 +84,7 @@ class ToolSpec:
     writes: bool
     evidence_paths: tuple[EvidencePath, ...] = ()
     reference_scopes: tuple[tuple[str, str], ...] = ()
+    returns: str = ""
 
 
 class ToolRejected(ValueError):
@@ -97,7 +98,7 @@ class ToolRegistry:
         for spec in specs:
             if not all(isinstance(value, str) and value for value in (spec.name, spec.app)):
                 raise ValueError("Tool name and app must be nonempty strings")
-            if not isinstance(spec.description, str) or type(spec.writes) is not bool:
+            if not isinstance(spec.description, str) or not isinstance(spec.returns, str) or type(spec.writes) is not bool:
                 raise ValueError("Tool description and write flag must be explicit")
             if spec.name in self._specs:
                 raise ValueError(f"Duplicate tool name: {spec.name}")
@@ -121,7 +122,10 @@ class ToolRegistry:
                   ) -> list[dict[str, Any]]:
         return [
             {"name": spec.name, "description": spec.description,
-             "parameters": deepcopy(spec.parameters), "writes": spec.writes}
+             "parameters": deepcopy(spec.parameters), "writes": spec.writes,
+             "returns": spec.returns,
+             "evidence_paths": [{"namespace": path.kind, "path": list(path.path),
+                                 "scope_argument": path.scope_argument} for path in spec.evidence_paths]}
             for spec in self._specs.values()
             if spec.app in installed_apps and (allowed_tools is None or spec.name in allowed_tools)
         ]

@@ -131,6 +131,7 @@ def build_registry(catalog: dict[str, Any]) -> ToolRegistry:
                 raise ValueError("Catalog tool app does not match its enclosing app")
             scopes = (("food_delivery.menu", "restaurant_id"),) if name == "food_delivery.place_order" else ()
             specs.append(ToolSpec(name, app["id"], tool["description"], _parameters(tool),
-                                  tool["kind"] == "write", _paths(name, app["id"]), scopes))
+                                  tool["kind"] == "write", _paths(name, app["id"]), scopes,
+                                  returns=tool.get("returns", "")))
     # Date and time formats use the official validate method's dialect.
     return ToolRegistry(specs, check_formats=False)

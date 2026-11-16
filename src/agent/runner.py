@@ -2,7 +2,9 @@
 
 from copy import deepcopy
 from dataclasses import dataclass
+from datetime import datetime
 from math import isfinite
+import os
 from queue import Empty, Queue
 from threading import Thread
 from time import monotonic
@@ -12,7 +14,8 @@ from ..inference.types import Sample
 from ..tooling.evidence import EvidenceLedger
 from ..tooling.json_data import InvalidJSON, decode_json, encode_json
 from ..tooling.registry import ToolRegistry, ToolRejected
-from .planner import Finish, Observation, Planner, PlannerInput, parse_action
+from .arg_normalize import normalize_arguments
+from .planner import Finish, Observation, Planner, PlannerInput, ToolCall, parse_action
 
 
 class Environment(Protocol):
@@ -45,6 +48,8 @@ class RunResult:
     dispatched_calls: int
     rejections: int
     session_safe_to_export: bool
+    guard_rejections: tuple[dict[str, str], ...] = ()
+    last_planner_output: str | None = None
 
 
 class CallTimeout(TimeoutError):
@@ -80,6 +85,73 @@ def _bounded_call(callback: Callable[[], _T], seconds: float) -> _T:
     return value
 
 
+def _record_lists(value: Any):
+    """Every list of records with an id, anywhere inside a tool result."""
+    if isinstance(value, list):
+        if value and all(isinstance(item, dict) and "id" in item for item in value):
+            yield value
+        for item in value:
+            yield from _record_lists(item)
+    elif isinstance(value, dict):
+        for item in value.values():
+            yield from _record_lists(item)
+
+
+def same_name_ask(name: str, arguments: dict[str, Any], parameters: dict[str, Any],
+                  results: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """Arguments of the clarification gold asks when an ID was picked among records that share a name.
+
+    In TRAIN gold a lookup that returns two records with one name is followed by sys.ask_missing_info for the
+    ID parameter, not by a choice (docs/experiments/CONTEXT_PLAN.md 3.1). `results` are this turn's tool results only.
+    """
+    def label(record: dict[str, Any]) -> str:
+        return str(record.get("name") or record.get("title") or "").casefold()
+
+    properties = parameters.get("properties", {})
+    for parameter, value in arguments.items():
+        if not isinstance(value, str) or "x-ref" not in properties.get(parameter, {}):
+            continue
+        for records in (found for result in results for found in _record_lists(result)):
+            chosen = next((record for record in records if record["id"] == value and label(record)), None)
+            if chosen is not None and sum(label(record) == label(chosen) for record in records) > 1:
+                return {"tool_name": name, "params": [parameter]}
+    return None
+
+
+def moved_event_end(arguments: dict[str, Any], results: list[dict[str, Any]]) -> dict[str, Any]:
+    """calendar.update_event arguments with the end TRAIN gold always sends when the start moves.
+
+    Gold keeps the event's length: end = new start + old duration (27 of 27 moves; docs/experiments/CONTEXT_PLAN.md).
+    Nothing changes unless the old event, with its start and end, is in the visible results.
+    """
+    if "start" not in arguments or "end" in arguments:
+        return arguments
+    old = None
+    for records in (found for result in results for found in _record_lists(result)):
+        old = next((record for record in records if record["id"] == arguments.get("event_id")
+                    and "start" in record and "end" in record), old)
+    try:
+        length = datetime.fromisoformat(old["end"]) - datetime.fromisoformat(old["start"])
+        return {**arguments, "end": (datetime.fromisoformat(arguments["start"]) + length).isoformat()}
+    except (TypeError, ValueError, OverflowError):  # no usable event/timestamps: leave the call alone
+        return arguments
+
+
+# Kinship and role words that open a spoken name. In TRAIN contacts are stored with one (sếp 33, bác 27, cô 23,
+# anh 15, thằng 4, thầy 3, bà 3, vợ 3, chị 2, ông 2, mẹ 1, chú 1, bé 1) or without it although the user says it
+# (anh 6, chị 3, thầy 1, ông 1); only the search result tells which.
+_NAME_TITLES = frozenset("anh chị thầy ông sếp bác cô thằng bà vợ mẹ chú bé".split())
+
+
+def name_only_search(arguments: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any] | None:
+    """contacts.search arguments without the leading title, when the search as asked found nobody."""
+    query = arguments.get("query")
+    if payload.get("ok") is not True or payload.get("contacts") != [] or not isinstance(query, str):
+        return None
+    title, _, name = query.strip().partition(" ")
+    return {**arguments, "query": name.strip()} if title.casefold() in _NAME_TITLES and name.strip() else None
+
+
 def run_sample(sample: Sample, registry: ToolRegistry, planner: Planner,
                environment_factory: Callable[[Sample], Environment], *,
                limits: Limits = Limits()) -> RunResult:
@@ -106,27 +178,58 @@ def run_sample(sample: Sample, registry: ToolRegistry, planner: Planner,
     dispatched_calls = 0
     rejections = 0
     step = 0
+    last_planner_output: str | None = None
+    follow_up: list[str] = []  # an action the runner itself queues; it passes every guard like a planner action
 
     def result(status: str, reply: str | None = None, *, safe: bool = True) -> RunResult:
-        return RunResult(status, reply, step, dispatched_calls, rejections, safe)
+        # Guard reasons already exclude submitted values; never include arguments.
+        guard_rejections = tuple({"tool": item.tool, "reason": item.content["reason"]}
+                                 for item in observations if item.kind == "rejected" and item.tool is not None)
+        return RunResult(status, reply, step, dispatched_calls, rejections, safe,
+                         guard_rejections, last_planner_output if dispatched_calls == 0 else None)
 
     for step in range(1, limits.max_steps + 1):
         if monotonic() >= deadline:
             return result("sample_timeout")
-        request = PlannerInput(deepcopy(sample), deepcopy(tools), tuple(deepcopy(observations)))
+        planner_deadline = min(deadline, monotonic() + limits.planner_seconds)
+        request = PlannerInput(deepcopy(sample), deepcopy(tools), tuple(deepcopy(observations)),
+                               planner_deadline - 0.1)
         try:
-            action = parse_action(_bounded_call(lambda: planner(request), remaining(limits.planner_seconds)),
-                                  max_bytes=limits.planner_output_bytes)
+            output = (follow_up.pop() if follow_up
+                      else _bounded_call(lambda: planner(request), remaining(limits.planner_seconds)))
+            # TRAIN native diagnostics expose the raw chat text before call normalization.
+            diagnostic_output = getattr(planner, "last_planner_output", None)
+            last_planner_output = (diagnostic_output[:400] if isinstance(diagnostic_output, str)
+                                   else output[:400] if isinstance(output, str) else None)
+            action = parse_action(output, max_bytes=limits.planner_output_bytes)
         except CallTimeout:
-            return result("planner_timeout", safe=False)
-        except CallbackError:
+            # Only a tool call can be in flight against the environment.
+            return result("planner_timeout")
+        except CallbackError as exc:
+            if isinstance(exc.__cause__, TimeoutError):
+                return result("planner_timeout")
             return result("planner_error")
         except InvalidJSON:
             observations.append(Observation("rejected", None, {"reason": "Invalid planner JSON action"}))
             rejections += 1
             continue
         if isinstance(action, Finish):
+            if action.reply in {"plan_invalid", "plan_incomplete", "plan_timeout"}:
+                return result(action.reply)
             return result("finished", action.reply)
+
+        if os.environ.get("LIFEMATE_ARG_NORMALIZE") == "1":
+            parameters = next((tool["parameters"] for tool in tools if tool["name"] == action.name), None)
+            if parameters is not None:
+                action = ToolCall(action.name, normalize_arguments(action.arguments, parameters, sample.context))
+
+        if os.environ.get("LIFEMATE_SMALL_FIXES") == "1" and action.name == "calendar.update_event":
+            action = ToolCall(action.name, moved_event_end(action.arguments, [
+                *(prior.payload for prior in sample.prior_tool_results),
+                *(item.content for item in observations if item.kind == "untrusted_tool_result")]))
+
+        # A shared name does not prove ambiguity: the request/history may select by
+        # relation, date, time, author, or provider. Leave clarification to the planner.
 
         try:
             spec = registry.authorize(action.name, action.arguments, sample.installed_apps,
@@ -135,7 +238,7 @@ def run_sample(sample: Sample, registry: ToolRegistry, planner: Planner,
             if key in nonrepeatable or key in recent_reads:
                 raise ToolRejected("Identical action already attempted in this sample")
         except (ToolRejected, InvalidJSON) as exc:
-            observations.append(Observation("rejected", None, {"reason": str(exc)}))
+            observations.append(Observation("rejected", action.name, {"reason": str(exc)}, action.arguments))
             rejections += 1
             continue
 
@@ -150,7 +253,8 @@ def run_sample(sample: Sample, registry: ToolRegistry, planner: Planner,
         except CallbackError as exc:
             if isinstance(exc.__cause__, ToolRejected):
                 observations.append(Observation("rejected", action.name,
-                                                {"reason": "Environment preflight rejected the action"}))
+                                                {"reason": "Environment preflight rejected the action"},
+                                                action.arguments))
                 rejections += 1
                 dispatched_calls -= 1
                 continue
@@ -164,6 +268,11 @@ def run_sample(sample: Sample, registry: ToolRegistry, planner: Planner,
             return result("invalid_tool_result", safe=False)
         observations.append(Observation("untrusted_tool_result", action.name, payload,
                                         action.arguments))
+        if os.environ.get("LIFEMATE_CONTACT_RETRY") == "1" and action.name == "contacts.search":
+            again = name_only_search(action.arguments, payload)
+            if again is not None:  # "anh Tuấn" found nobody: look for "Tuấn" before the planner gives up
+                follow_up.append(encode_json({"action": "call", "tool": action.name, "arguments": again},
+                                             max_bytes=limits.planner_output_bytes))
         if payload["ok"] and payload.get("done") is not False:
             if spec.writes:
                 recent_reads.clear()
