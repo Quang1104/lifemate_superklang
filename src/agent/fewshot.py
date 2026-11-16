@@ -35,6 +35,13 @@ def _jaccard(first: frozenset, second: frozenset) -> float:
     return len(first & second) / len(first | second) if first or second else 0.0
 
 
+def _embed(texts: list[str]):
+    """Unit sentence vectors as an (n, d) numpy array; tests replace this with a tiny fake."""
+    from .embed_retrieval import encode
+
+    return encode(texts)
+
+
 def _compact(value) -> str:
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
 
@@ -44,6 +51,26 @@ class Examples:
         self._rows = [(row, _words(row["transcript"]), frozenset(row["apps"]),
                        frozenset(step["tool"] for step in row["plan"]["steps"]) if "plan" in row
                        else frozenset(call["name"] for call in row["calls"])) for row in rows]
+        self._vectors = None  # pool embeddings, computed once when LIFEMATE_EMBED_RETRIEVAL is on
+        self._query = (None, None)  # the last request text and its vector: select runs once per planner step
+
+    def embed_pool(self) -> None:
+        if self._vectors is None:
+            texts = [row["transcript"] for row, *_ in self._rows]
+            self._vectors = _embed(texts) if texts else []
+            self._index = {row["id"]: index for index, (row, *_) in enumerate(self._rows)}
+
+    def _by_embedding(self, sample: Sample, ranked: list) -> list:
+        """The same candidates, ordered by embedding cosine instead of word overlap.
+
+        No app-overlap term: cosines of this model sit in a narrow band (p5 0.83, p95 0.90 on VAL309), so the 0.2
+        weight used with word overlap would decide the order by itself (docs/EMBED_RETRIEVAL.md).
+        """
+        self.embed_pool()
+        if self._query[0] != sample.user_request:
+            self._query = (sample.user_request, _embed([sample.user_request])[0])
+        query = self._query[1]
+        return sorted((-float(self._vectors[self._index[row["id"]]] @ query), row["id"], row) for _, _, row in ranked)
 
     @classmethod
     def load(cls, path: Path = POOL, allowed_ids: frozenset[str] | None = None) -> "Examples":
@@ -70,6 +97,8 @@ class Examples:
         )
         if os.environ.get("LIFEMATE_FEWSHOT_GATE") == "1" and (not ranked or -ranked[0][0] < GATE_TAU):
             return []  # nothing similar: examples would only pull the model toward TRAIN tools
+        if os.environ.get("LIFEMATE_EMBED_RETRIEVAL") == "1" and ranked:
+            ranked = self._by_embedding(sample, ranked)  # the gate above still uses word overlap, as trained
         chosen, used, transcripts = [], 0, set()
         for _, _, row in ranked:
             item = {"request": row["transcript"], **{key: row[key] for key in ("plan", "calls") if key in row}}

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass
+import os
 from pathlib import Path
 from time import monotonic
 from typing import Any, Callable
@@ -69,6 +70,11 @@ def load_models(model_dir: str | Path | None, asr_dir: str | Path | None, *,
         transcribe = LocalWhisper(asr_dir, device=device) if asr_dir else None
         parameter_counts = {"planner": planner.parameter_count,
                             "asr": transcribe.parameter_count if transcribe else 0}
+        if os.environ.get("LIFEMATE_EMBED_RETRIEVAL") == "1" and planner_mode == "native":
+            from ..agent.embed_retrieval import warm
+
+            # Loaded and counted with the other models, so the first sample does not pay for it.
+            parameter_counts["embedder"] = warm(device)
         if parameter_counts["planner"] >= 5_000_000_000:
             raise KitError("The planner must contain fewer than five billion parameters")
         if sum(parameter_counts.values()) >= 6_000_000_000:

@@ -17,6 +17,16 @@ from training_code.model_pins import checked_pin  # noqa: E402
 
 # Same file set the Colab notebook downloads for the measured runs.
 PATTERNS = ["*.json", "*.jinja", "*.safetensors", "*.bin", "merges.txt", "LICENSE", "README.md"]
+# The embedder repo also ships ONNX/OpenVINO exports and a second copy of the weights; take only what is loaded.
+EMBEDDER_FILES = ["config.json", "tokenizer.json", "tokenizer_config.json", "special_tokens_map.json",
+                  "sentencepiece.bpe.model", "model.safetensors"]
+
+
+def fetch_embedder(directory: str) -> None:
+    """The pinned sentence embedder for LIFEMATE_EMBED_RETRIEVAL (configs/colab_models.json role `embedder`)."""
+    pins = json.loads((Path(__file__).resolve().parent / "configs" / "colab_models.json").read_text(encoding="utf-8"))
+    snapshot_download(**checked_pin(pins, "embedder"), local_dir=directory, allow_patterns=EMBEDDER_FILES)
+    shutil.rmtree(Path(directory) / ".cache", ignore_errors=True)
 
 
 def main(adapter: str, base: str = "/tmp/base", planner: str = "/models/planner", asr: str = "/models/asr",
@@ -37,7 +47,13 @@ def main(adapter: str, base: str = "/tmp/base", planner: str = "/models/planner"
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("adapter")
+    parser.add_argument("adapter", nargs="?")
     parser.add_argument("--asr-role", choices=("asr", "asr_large"), default="asr")
+    parser.add_argument("--embedder", metavar="DIR", help="fetch only the pinned sentence embedder into DIR")
     args = parser.parse_args()
-    main(args.adapter, asr_role=args.asr_role)
+    if args.embedder:
+        fetch_embedder(args.embedder)
+    elif args.adapter:
+        main(args.adapter, asr_role=args.asr_role)
+    else:
+        parser.error("pass the adapter folder, or --embedder DIR")

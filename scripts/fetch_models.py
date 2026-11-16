@@ -12,6 +12,9 @@ from training_code.model_pins import UNRESOLVED, checked_pin, eligible_revision,
 
 
 PATTERNS = ["*.json", "*.jinja", "*.safetensors", "*.bin", "merges.txt", "LICENSE", "README.md"]
+# The embedder repo also ships ONNX/OpenVINO exports and a second copy of the weights; take only what is loaded.
+EMBEDDER_FILES = ["config.json", "tokenizer.json", "tokenizer_config.json", "special_tokens_map.json",
+                  "sentencepiece.bpe.model", "model.safetensors"]
 PIN_FILE = Path(__file__).resolve().parents[1] / "configs" / "colab_models.json"
 
 
@@ -35,13 +38,14 @@ def fetch_models(models_dir: Path, roles, *, resolve_asr_large: bool = False,
             raise ValueError(f"No commit metadata for {role}")
         date = verify_revision(pin, commits[0])
         print(json.dumps({"role": role, **pin, "commit_date_utc": date}), flush=True)
-        snapshot_download(**pin, local_dir=models_dir / role, allow_patterns=PATTERNS)
+        snapshot_download(**pin, local_dir=models_dir / role,
+                          allow_patterns=EMBEDDER_FILES if role == "embedder" else PATTERNS)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--models-dir", type=Path, default=Path("/content/lifemate_models"))
-    parser.add_argument("--roles", nargs="+", choices=("planner", "fallback_planner", "asr", "asr_large"),
+    parser.add_argument("--roles", nargs="+", choices=("planner", "fallback_planner", "asr", "asr_large", "embedder"),
                         default=["fallback_planner", "asr"])
     parser.add_argument("--resolve-asr-large", action="store_true")
     args = parser.parse_args()

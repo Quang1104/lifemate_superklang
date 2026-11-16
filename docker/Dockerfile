@@ -24,6 +24,9 @@ COPY docker/fetch_models.py ./fetch_models.py
 # step, so neither the base checkpoint nor the adapter (a bind mount) ends up in an image layer.
 ARG ASR_ROLE=asr
 RUN --mount=type=bind,from=adapter,target=/tmp/adapter     HF_HUB_OFFLINE=0 TRANSFORMERS_OFFLINE=0 python -B fetch_models.py /tmp/adapter --asr-role "${ASR_ROLE}"
+# Sentence embedder for LIFEMATE_EMBED_RETRIEVAL: its own layer, fetched only when the release sets the flag.
+ARG LIFEMATE_EMBED_RETRIEVAL=
+RUN if [ -n "${LIFEMATE_EMBED_RETRIEVAL}" ]; then HF_HUB_OFFLINE=0 TRANSFORMERS_OFFLINE=0 python -B fetch_models.py --embedder /models/embedder; fi
 COPY --chmod=755 docker/predict.sh docker/start_jupyter.sh ./
 COPY docker/predict_notebook.ipynb ./
 COPY scripts/build_sft.py ./scripts/build_sft.py
@@ -52,6 +55,7 @@ ENV LIFEMATE_ARG_NORMALIZE=${LIFEMATE_ARG_NORMALIZE} \
     LIFEMATE_CONTACT_RETRY=${LIFEMATE_CONTACT_RETRY} \
     LIFEMATE_CONTEXT_V4=${LIFEMATE_CONTEXT_V4} \
     LIFEMATE_DATE_TABLE=${LIFEMATE_DATE_TABLE} \
+    LIFEMATE_EMBED_RETRIEVAL=${LIFEMATE_EMBED_RETRIEVAL} \
     LIFEMATE_FEWSHOT_GATE=${LIFEMATE_FEWSHOT_GATE} \
     LIFEMATE_PROMPT_V2=${LIFEMATE_PROMPT_V2} \
     LIFEMATE_SMALL_FIXES=${LIFEMATE_SMALL_FIXES} \

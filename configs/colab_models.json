@@ -14,5 +14,9 @@
   "asr_large": {
     "repo_id": "vinai/PhoWhisper-large",
     "revision": "b9136a44b5f2ca664bd0b8f74baecf1715f6eeeb"
+  },
+  "embedder": {
+    "repo_id": "intfloat/multilingual-e5-small",
+    "revision": "614241f622f53c4eeff9890bdc4f31cfecc418b3"
   }
 }
